@@ -1,0 +1,22 @@
+bibentry(
+  bibtype  = "Article",
+  title    = "A tree-spatial scan statistic",
+  author   = c(
+    person("André L. F.", "Cançado"),
+    person("Geiziane S.", "Oliveira"),
+    person("Allan V. C.", "Quadros"),
+    person("Luiz H.", "Duczmal")
+  ),
+  journal  = "Environmental and Ecological Statistics",
+  year     = "2025",
+  volume   = "32",
+  pages    = "953--978",
+  doi      = "10.1007/s10651-025-00670-w",
+  header   = "To cite treeSS in publications, please use:",
+  textVersion = paste(
+    "Cançado, A. L. F., Oliveira, G. S., Quadros, A. V. C., & Duczmal, L.",
+    "(2025). A tree-spatial scan statistic.",
+    "Environmental and Ecological Statistics, 32, 953-978.",
+    "doi:10.1007/s10651-025-00670-w"
+  )
+)

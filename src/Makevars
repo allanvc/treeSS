@@ -1,0 +1,8 @@
+## Makevars for treeSS
+## Enables OpenMP when available (cross-platform, CRAN-compliant).
+## The SHLIB_OPENMP_CXXFLAGS variable is set by R's configure; it is
+## empty on platforms where OpenMP is not available, so the package
+## still compiles as single-threaded.
+
+PKG_CXXFLAGS = $(SHLIB_OPENMP_CXXFLAGS)
+PKG_LIBS     = $(SHLIB_OPENMP_CXXFLAGS)

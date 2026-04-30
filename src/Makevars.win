@@ -1,0 +1,5 @@
+## Makevars.win for treeSS (Windows)
+## Same as Makevars - SHLIB_OPENMP_CXXFLAGS is set by R on Windows too.
+
+PKG_CXXFLAGS = $(SHLIB_OPENMP_CXXFLAGS)
+PKG_LIBS     = $(SHLIB_OPENMP_CXXFLAGS)
