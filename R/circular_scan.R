@@ -15,7 +15,11 @@
 #' @param alpha Numeric. Significance level. Default \code{0.05}.
 #' @param n_secondary Integer. Default \code{1000}.
 #' @param model Character. \code{"poisson"} or \code{"binomial"}.
-#' @param seed Integer or \code{NULL}.
+#' @param seed Integer or \code{NULL}. Random seed for the Monte
+#'   Carlo loop. When non-\code{NULL}, the user's pre-existing RNG
+#'   state is saved on entry and restored on exit, so the seed
+#'   argument affects only this call and does not leak into
+#'   subsequent draws in the user's session.
 #' @param n_cores Integer. OpenMP threads.
 #'
 #' @return An object of class \code{"circular_scan"}.
@@ -57,7 +61,10 @@ circular_scan <- function(cases, population, region_id, x, y,
 
   .validate_regions(regions)
 
-  if (!is.null(seed)) set.seed(seed)
+  if (!is.null(seed)) {
+    .snap__ <- .seed_save_and_set(seed)
+    on.exit(.seed_restore(.snap__), add = TRUE)
+  }
 
   n <- nrow(regions)
   N <- sum(regions$population)

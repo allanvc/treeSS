@@ -58,11 +58,11 @@ Useful links:
 
 }
 \author{
-\strong{Maintainer}: Allan V. C. Quadros \email{allanvcq@gmail.com} (\href{https://orcid.org/0000-0003-3250-5380}{ORCID})
+\strong{Maintainer}: Allan Quadros \email{allanvcq@gmail.com} (\href{https://orcid.org/0000-0003-3250-5380}{ORCID})
 
 Authors:
 \itemize{
-  \item Andre L. F. Cancado
+  \item Andre L. F. Cancado (\href{https://orcid.org/0000-0002-7019-8521}{ORCID})
   \item Geiziane S. Oliveira
   \item Luiz H. Duczmal
 }

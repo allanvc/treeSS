@@ -343,9 +343,16 @@ iterative_scan <- function(cases = NULL, population = NULL,
 #' Print Method for iterative_scan Objects
 #'
 #' @param x An object of class \code{"iterative_scan"}.
+#' @param max_show Integer. Accepted for API consistency with
+#'   \code{print.treespatial_scan()}, \code{print.tree_scan()}, and
+#'   \code{print.circular_scan()}. Currently the only field affected
+#'   is the per-iteration \code{leaf_ids} column of \code{x$clusters},
+#'   which is omitted from the printed table by default to keep the
+#'   summary compact; pass \code{max_show = -1L} to include both
+#'   \code{leaf_ids} and \code{region_ids} in the printed table.
 #' @param ... Further arguments passed to or from other methods.
 #' @export
-print.iterative_scan <- function(x, ...) {
+print.iterative_scan <- function(x, max_show = 10L, ...) {
   cat("Iterative Scan\n")
   cat(paste(rep("-", 50), collapse = ""), "\n")
   cat("Scan type:", x$scan_type, "\n")
@@ -360,8 +367,10 @@ print.iterative_scan <- function(x, ...) {
 
     cat("All iterations:\n")
     display <- x$clusters
-    display$region_ids <- NULL
-    display$leaf_ids <- NULL
+    if (!isTRUE(max_show < 0L)) {
+      display$region_ids <- NULL
+      display$leaf_ids <- NULL
+    }
     print(display, row.names = FALSE)
   } else {
     cat("No significant clusters detected.\n")

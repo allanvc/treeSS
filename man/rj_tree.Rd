@@ -12,6 +12,12 @@ A data.frame with 622 rows and 2 columns:
     for the root.}
 }
 }
+\source{
+Constructed from the leaf-level codes in \code{\link{rj_mortality}}, which
+in turn come from the Brazilian Mortality Information System (SIM)
+maintained by DATASUS. See \code{data-raw/} in the GitHub repository for
+the build script.
+}
 \usage{
 rj_tree
 }

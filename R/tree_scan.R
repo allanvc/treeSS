@@ -22,7 +22,11 @@
 #' @param alpha Numeric. Significance level. Default is \code{0.05}.
 #' @param model Character. Likelihood model: either \code{"poisson"}
 #'   (default) or \code{"binomial"}.
-#' @param seed Integer or \code{NULL}. Random seed for reproducibility.
+#' @param seed Integer or \code{NULL}. Random seed for the Monte
+#'   Carlo loop. When non-\code{NULL}, the user's pre-existing RNG
+#'   state is saved on entry and restored on exit, so the seed
+#'   argument affects only this call and does not leak into
+#'   subsequent draws in the user's session.
 #' @param n_cores Integer. Number of OpenMP threads for the Monte Carlo
 #'   loop. Default is \code{1L} (serial). Set higher to parallelize.
 #'
@@ -83,7 +87,10 @@ tree_scan <- function(tree = NULL, cases, population = NULL, nsim = 999L,
          call. = FALSE)
   }
 
-  if (!is.null(seed)) set.seed(seed)
+  if (!is.null(seed)) {
+    .snap__ <- .seed_save_and_set(seed)
+    on.exit(.seed_restore(.snap__), add = TRUE)
+  }
 
   all_nodes <- tree$node_id
   n_nodes <- length(all_nodes)

@@ -33,14 +33,35 @@
 #'     \item{pvalue_adjusted, significant}{(Iterative method only) The
 #'       Holm-Bonferroni adjusted p-value and corresponding significance
 #'       flag for the iteration.}
-#'     \item{panel}{(Only when \code{overlap = TRUE}) A label for
-#'       \code{facet_wrap}, e.g. \code{"#1 P209 (LR=39.6)"} for single-
-#'       pass scans, or \code{"Iter 1: P209 (LR=39.6, p_adj=0.005)"} for
-#'       iterative scans.}
+#'     \item{panel}{(Only when \code{overlap = TRUE}) A two-line label
+#'       for \code{facet_wrap}, with the cluster identifier on the first
+#'       line and the test statistic on the second. For single-pass
+#'       scans the label looks like \code{"#1 P209\\n(LR=39.6)"}; for
+#'       iterative scans it looks like
+#'       \code{"Iter 1: P209\\n(LR=39.6, p_adj=0.005)"}. The newline
+#'       keeps long node identifiers from overflowing the strip in
+#'       multi-panel layouts.}
 #'   }
 #'
 #' @seealso \code{\link{treespatial_scan}}, \code{\link{circular_scan}},
 #'   \code{\link{iterative_scan}}, \code{\link{filter_clusters}}
+#'
+#' @examples
+#' data(london_collisions); data(london_tree)
+#' result <- treespatial_scan(
+#'   cases       = london_collisions$cases,
+#'   population  = london_collisions$population,
+#'   region_id   = london_collisions$region_id,
+#'   x           = london_collisions$x,
+#'   y           = london_collisions$y,
+#'   node_id     = london_collisions$node_id,
+#'   tree        = london_tree,
+#'   nsim        = 99, seed = 42
+#' )
+#'
+#' # Long format suitable for merging with a polygon layer.
+#' cr <- get_cluster_regions(result, n_clusters = 2L, overlap = TRUE)
+#' head(cr)
 #'
 #' @export
 get_cluster_regions <- function(result, n_clusters = 1L, overlap = TRUE,
@@ -102,8 +123,11 @@ get_cluster_regions.iterative_scan <- function(result, n_clusters = 1L,
 
     if (overlap) {
       sig_marker <- if (isTRUE(iter$clusters$significant[k])) "" else " (n.s.)"
-      cr_k$panel <- paste0("Iter ", k, ": ", iter$clusters$node_id[k],
-                           " (LR=", round(iter$clusters$llr[k], 1),
+      # Split into two lines so facet_wrap shows the node name on
+      # line 1 (which can already be long, e.g. a multi-segment ICD-10
+      # path) and the test statistic / adjusted p-value on line 2.
+      cr_k$panel <- paste0("Iter ", k, ": ", iter$clusters$node_id[k], "\n",
+                           "(LR=", round(iter$clusters$llr[k], 1),
                            ", p_adj=",
                            format.pval(iter$clusters$pvalue_adjusted[k],
                                         digits = 2),
@@ -180,13 +204,18 @@ get_cluster_regions.iterative_scan <- function(result, n_clusters = 1L,
     rows <- list()
 
     for (cl in cluster_list) {
+      # Skip empty slots that arise when .find_zone() could not locate a
+      # secondary cluster's zone in the rebuilt zone family. Iterating over
+      # a NULL slot would silently produce a chunk with character(0) panel.
+      if (is.null(cl)) next
+
       chunk <- regions
       chunk$cluster <- NA_integer_
       chunk$node_id <- NA_character_
       chunk$llr     <- NA_real_
       chunk$pvalue  <- NA_real_
-      chunk$panel   <- paste0("#", cl$cluster, " ", cl$node_id,
-                              " (LR=", round(cl$llr, 1), ")")
+      chunk$panel   <- paste0("#", cl$cluster, " ", cl$node_id, "\n",
+                              "(LR=", round(cl$llr, 1), ")")
 
       # Mark cluster members
       chunk$cluster[cl$idx] <- cl$cluster
@@ -209,6 +238,7 @@ get_cluster_regions.iterative_scan <- function(result, n_clusters = 1L,
     out$pvalue  <- NA_real_
 
     for (cl in cluster_list) {
+      if (is.null(cl)) next
       free <- is.na(out$cluster[cl$idx])
       out$cluster[cl$idx[free]] <- cl$cluster
       out$node_id[cl$idx[free]] <- cl$node_id

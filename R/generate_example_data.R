@@ -11,7 +11,10 @@
 #' @param cluster_leaves Integer vector. Default \code{c(3, 4)}.
 #' @param rr Numeric. Relative risk. Default 2.0.
 #' @param Cg Integer. Cases per branch. Default 200.
-#' @param seed Integer. Random seed.
+#' @param seed Integer or \code{NULL}. Random seed. When non-\code{NULL},
+#'   the user's pre-existing RNG state is saved on entry and restored on
+#'   exit. Default \code{123L} (a fixed value chosen for reproducible
+#'   examples in the documentation).
 #'
 #' @return A list with vector components ready to feed into
 #'   \code{\link{treespatial_scan}}: \code{cases}, \code{population},
@@ -37,7 +40,10 @@ generate_example_data <- function(n_regions = 50L, pop_per_region = 1000,
                                   cluster_regions = 1:7,
                                   cluster_leaves = c(3, 4),
                                   rr = 2.0, Cg = 200L, seed = 123L) {
-  set.seed(seed)
+  if (!is.null(seed)) {
+    .snap__ <- .seed_save_and_set(seed)
+    on.exit(.seed_restore(.snap__), add = TRUE)
+  }
 
   sq <- ceiling(sqrt(n_regions))
   grid_x <- rep(seq_len(sq), each = sq)[seq_len(n_regions)]

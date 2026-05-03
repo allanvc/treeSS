@@ -42,10 +42,14 @@ A \code{data.frame} with columns from \code{result$regions} plus:
     \item{pvalue_adjusted, significant}{(Iterative method only) The
       Holm-Bonferroni adjusted p-value and corresponding significance
       flag for the iteration.}
-    \item{panel}{(Only when \code{overlap = TRUE}) A label for
-      \code{facet_wrap}, e.g. \code{"#1 P209 (LR=39.6)"} for single-
-      pass scans, or \code{"Iter 1: P209 (LR=39.6, p_adj=0.005)"} for
-      iterative scans.}
+    \item{panel}{(Only when \code{overlap = TRUE}) A two-line label
+      for \code{facet_wrap}, with the cluster identifier on the first
+      line and the test statistic on the second. For single-pass
+      scans the label looks like \code{"#1 P209\\n(LR=39.6)"}; for
+      iterative scans it looks like
+      \code{"Iter 1: P209\\n(LR=39.6, p_adj=0.005)"}. The newline
+      keeps long node identifiers from overflowing the strip in
+      multi-panel layouts.}
   }
 }
 \description{
@@ -57,6 +61,24 @@ any mapping package (ggplot2, leaflet, tmap, etc.).
 This is a generic with methods for objects returned by
 \code{\link{treespatial_scan}}, \code{\link{circular_scan}}, and
 \code{\link{iterative_scan}}.
+}
+\examples{
+data(london_collisions); data(london_tree)
+result <- treespatial_scan(
+  cases       = london_collisions$cases,
+  population  = london_collisions$population,
+  region_id   = london_collisions$region_id,
+  x           = london_collisions$x,
+  y           = london_collisions$y,
+  node_id     = london_collisions$node_id,
+  tree        = london_tree,
+  nsim        = 99, seed = 42
+)
+
+# Long format suitable for merging with a polygon layer.
+cr <- get_cluster_regions(result, n_clusters = 2L, overlap = TRUE)
+head(cr)
+
 }
 \seealso{
 \code{\link{treespatial_scan}}, \code{\link{circular_scan}},

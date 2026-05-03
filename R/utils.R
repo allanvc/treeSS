@@ -181,3 +181,41 @@
   }
   depths
 }
+
+
+## .seed_save_and_set(): save the user's current RNG state (or signal
+## its absence), and set a new seed. Returns a "snapshot" object that
+## the caller must pass to .seed_restore() in an on.exit() handler.
+##
+## Idiomatic usage from a user-facing function:
+##
+##   if (!is.null(seed)) {
+##     snap <- .seed_save_and_set(seed)
+##     on.exit(.seed_restore(snap), add = TRUE)
+##   }
+##
+## This guarantees that the user's RNG state is restored when the
+## function returns, whether normally or via an error. The user's
+## session-level set.seed() is therefore never silently overridden
+## by the seed argument to scan functions.
+.seed_save_and_set <- function(seed) {
+  has_prev <- exists(".Random.seed", envir = .GlobalEnv,
+                     inherits = FALSE)
+  prev <- if (has_prev) {
+    get(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
+  } else {
+    NULL
+  }
+  set.seed(seed)
+  list(has_prev = has_prev, prev = prev)
+}
+
+.seed_restore <- function(snap) {
+  if (snap$has_prev) {
+    assign(".Random.seed", snap$prev, envir = .GlobalEnv)
+  } else if (exists(".Random.seed", envir = .GlobalEnv,
+                    inherits = FALSE)) {
+    rm(".Random.seed", envir = .GlobalEnv)
+  }
+  invisible()
+}

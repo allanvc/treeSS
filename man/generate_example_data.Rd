@@ -27,7 +27,10 @@ generate_example_data(
 
 \item{Cg}{Integer. Cases per branch. Default 200.}
 
-\item{seed}{Integer. Random seed.}
+\item{seed}{Integer or \code{NULL}. Random seed. When non-\code{NULL},
+the user's pre-existing RNG state is saved on entry and restored on
+exit. Default \code{123L} (a fixed value chosen for reproducible
+examples in the documentation).}
 }
 \value{
 A list with vector components ready to feed into

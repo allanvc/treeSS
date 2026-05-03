@@ -12,6 +12,10 @@ A data.frame with 81 rows and 2 columns:
     for the root.}
 }
 }
+\source{
+Constructed from the leaf-level codes in \code{\link{london_collisions}}.
+See \code{data-raw/} in the GitHub repository for the build script.
+}
 \usage{
 london_tree
 }

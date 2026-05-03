@@ -1,9 +1,54 @@
+## .cat_wrapped(): print "  Label: v1, v2, v3, ..." with automatic
+## line-wrapping at 65 characters (so the output fits in the R Journal
+## two-column PDF format) and optional truncation when there are too
+## many values to print in full.
+##
+## When `length(values) > max_show`, only the first `max_show` are
+## shown and a tail of "... and N more" is appended. Pass `max_show
+## = -1L` (or any value larger than `length(values)`) to print the
+## full list. This mirrors the way `tibble` prints data frames:
+## sensible default, with an explicit opt-in for the full output.
+##
+## Typical use:
+##   .cat_wrapped("  Leaf IDs:", mlc$leaf_ids, max_show = 10L)
+.cat_wrapped <- function(label, values, sep = ", ", max_show = 10L) {
+  n <- length(values)
+  if (n == 0L) {
+    cat(label, "\n", sep = "")
+    return(invisible())
+  }
+  truncated <- max_show > 0L && n > max_show
+  if (truncated) {
+    shown <- values[seq_len(max_show)]
+    text  <- paste0(paste(shown, collapse = sep),
+                    sep, "... and ", n - max_show, " more")
+  } else {
+    text  <- paste(values, collapse = sep)
+  }
+  width <- min(getOption("width", 80L), 65L)
+  # Indent continuation lines with the same number of spaces as `label`
+  # plus one for the space that follows it.
+  indent <- paste(rep(" ", nchar(label) + 1L), collapse = "")
+  lines <- strwrap(text, width = width,
+                   initial = paste0(label, " "),
+                   prefix  = indent)
+  cat(lines, sep = "\n")
+  cat("\n")
+  invisible()
+}
+
 #' Print Method for circular_scan Objects
 #'
 #' @param x An object of class \code{"circular_scan"}.
+#' @param max_show Integer. Maximum number of region IDs to display
+#'   in full before truncating with "... and N more". The default of
+#'   \code{10L} keeps console output compact for large clusters; set
+#'   \code{max_show = -1L} (or any value larger than the cluster
+#'   size) to print every region. Mirrors the convention used by
+#'   \pkg{tibble} for printing wide tables.
 #' @param ... Further arguments passed to or from other methods.
 #' @export
-print.circular_scan <- function(x, ...) {
+print.circular_scan <- function(x, max_show = 10L, ...) {
   cat("Circular Spatial Scan Statistic\n")
   cat(paste(rep("-", 50), collapse = ""), "\n")
   cat("Total cases:", x$total_cases, "\n")
@@ -13,7 +58,7 @@ print.circular_scan <- function(x, ...) {
 
   mlc <- x$most_likely_cluster
   cat("Most likely cluster:\n")
-  cat("  Regions:", paste(mlc$region_ids, collapse = ", "), "\n")
+  .cat_wrapped("  Regions:", mlc$region_ids, max_show = max_show)
   cat("  Number of regions:", length(mlc$region_ids), "\n")
   cat("  Cases:", mlc$cases, "\n")
   cat("  Expected:", round(mlc$expected, 2), "\n")
@@ -32,8 +77,18 @@ print.circular_scan <- function(x, ...) {
 
 #' Summary Method for circular_scan Objects
 #'
+#' Prints the same fields as \code{print.circular_scan()}, followed
+#' by a numeric summary of the simulated log-likelihood-ratio
+#' distribution under the null. Useful for checking that the Monte
+#' Carlo replicates produced a reasonable spread relative to the
+#' observed test statistic.
+#'
 #' @param object An object of class \code{"circular_scan"}.
-#' @param ... Further arguments passed to or from other methods.
+#' @param ... Further arguments passed to \code{print.circular_scan()}.
+#'   In particular, \code{max_show} controls how many region IDs of
+#'   the most-likely cluster are printed in full before truncating
+#'   with \code{"... and N more"}; see
+#'   \code{\link{print.circular_scan}} for details.
 #' @export
 summary.circular_scan <- function(object, ...) {
   print.circular_scan(object, ...)
@@ -45,9 +100,14 @@ summary.circular_scan <- function(object, ...) {
 #' Print Method for tree_scan Objects
 #'
 #' @param x An object of class \code{"tree_scan"}.
+#' @param max_show Integer. Maximum number of leaf IDs to display
+#'   in full before truncating with "... and N more". The default of
+#'   \code{10L} keeps console output compact when a node spans
+#'   hundreds or thousands of leaves (such as the root of a deep
+#'   tree); set \code{max_show = -1L} to print every leaf.
 #' @param ... Further arguments passed to or from other methods.
 #' @export
-print.tree_scan <- function(x, ...) {
+print.tree_scan <- function(x, max_show = 10L, ...) {
   cat("Tree-Based Scan Statistic\n")
   cat(paste(rep("-", 50), collapse = ""), "\n")
   cat("Total cases:", x$total_cases, "\n")
@@ -58,7 +118,7 @@ print.tree_scan <- function(x, ...) {
   mlc <- x$most_likely_cluster
   cat("Most likely cluster:\n")
   cat("  Node ID:", mlc$node_id, "\n")
-  cat("  Leaf IDs:", paste(mlc$leaf_ids, collapse = ", "), "\n")
+  .cat_wrapped("  Leaf IDs:", mlc$leaf_ids, max_show = max_show)
   cat("  Cases:", mlc$cases, "\n")
   cat("  Expected:", round(mlc$expected, 2), "\n")
   cat("  Log-LR:", round(mlc$llr, 4), "\n")
@@ -78,8 +138,16 @@ print.tree_scan <- function(x, ...) {
 
 #' Summary Method for tree_scan Objects
 #'
+#' Prints the same fields as \code{print.tree_scan()}, followed by
+#' the full table of all candidate cuts (not just significant ones)
+#' ordered by decreasing log-likelihood ratio.
+#'
 #' @param object An object of class \code{"tree_scan"}.
-#' @param ... Further arguments passed to or from other methods.
+#' @param ... Further arguments passed to \code{print.tree_scan()}.
+#'   In particular, \code{max_show} controls how many leaf IDs of
+#'   the most-likely cluster are printed in full before truncating
+#'   with \code{"... and N more"}; see \code{\link{print.tree_scan}}
+#'   for details.
 #' @export
 summary.tree_scan <- function(object, ...) {
   print.tree_scan(object, ...)
@@ -91,9 +159,16 @@ summary.tree_scan <- function(object, ...) {
 #' Print Method for treespatial_scan Objects
 #'
 #' @param x An object of class \code{"treespatial_scan"}.
+#' @param max_show Integer. Maximum number of leaf IDs and region
+#'   IDs to display in full before truncating with "... and N more".
+#'   The default of \code{10L} keeps console output compact when the
+#'   most likely cluster spans many leaves (for example, when the
+#'   root node maximises the likelihood ratio for an aggregated
+#'   denominator) or many regions; set \code{max_show = -1L} to
+#'   print every value. Mirrors the convention used by \pkg{tibble}.
 #' @param ... Further arguments passed to or from other methods.
 #' @export
-print.treespatial_scan <- function(x, ...) {
+print.treespatial_scan <- function(x, max_show = 10L, ...) {
   cat("Tree-Spatial Scan Statistic\n")
   cat(paste(rep("-", 50), collapse = ""), "\n")
   cat("Total population:", x$total_population, "\n")
@@ -104,8 +179,8 @@ print.treespatial_scan <- function(x, ...) {
   mlc <- x$most_likely_cluster
   cat("Most likely cluster:\n")
   cat("  Tree node:", mlc$node_id, "\n")
-  cat("  Leaf IDs:", paste(mlc$leaf_ids, collapse = ", "), "\n")
-  cat("  Regions:", paste(mlc$region_ids, collapse = ", "), "\n")
+  .cat_wrapped("  Leaf IDs:", mlc$leaf_ids, max_show = max_show)
+  .cat_wrapped("  Regions:", mlc$region_ids, max_show = max_show)
   cat("  Number of regions:", length(mlc$region_ids), "\n")
   cat("  Cases in (zone, branch):", mlc$cases, "\n")
   cat("  Expected:", round(mlc$expected, 2), "\n")
@@ -119,8 +194,20 @@ print.treespatial_scan <- function(x, ...) {
 
 #' Summary Method for treespatial_scan Objects
 #'
+#' Prints the same fields as \code{print.treespatial_scan()}, followed
+#' by the top-10 branches by total case count and a numeric summary
+#' of the simulated log-likelihood-ratio distribution under the null.
+#' Useful for diagnosing how heavily one branch of the tree dominates
+#' the dataset and whether the observed maximum LR is a clear outlier
+#' against the simulated null.
+#'
 #' @param object An object of class \code{"treespatial_scan"}.
-#' @param ... Further arguments passed to or from other methods.
+#' @param ... Further arguments passed to
+#'   \code{print.treespatial_scan()}. In particular, \code{max_show}
+#'   controls how many leaf IDs and region IDs of the most-likely
+#'   cluster are printed in full before truncating with \code{"...
+#'   and N more"}; see \code{\link{print.treespatial_scan}} for
+#'   details.
 #' @export
 summary.treespatial_scan <- function(object, ...) {
   print.treespatial_scan(object, ...)

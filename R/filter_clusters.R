@@ -47,6 +47,20 @@
 #' @seealso \code{\link{treespatial_scan}}, \code{\link{circular_scan}},
 #'   \code{\link{tree_scan}}, \code{\link{iterative_scan}}
 #'
+#' @examples
+#' data(london_collisions); data(london_tree)
+#' result <- treespatial_scan(
+#'   cases       = london_collisions$cases,
+#'   population  = london_collisions$population,
+#'   region_id   = london_collisions$region_id,
+#'   x           = london_collisions$x,
+#'   y           = london_collisions$y,
+#'   node_id     = london_collisions$node_id,
+#'   tree        = london_tree,
+#'   nsim        = 99, seed = 42
+#' )
+#' filter_clusters(result)
+#'
 #' @export
 filter_clusters <- function(result, alpha = NULL) {
 

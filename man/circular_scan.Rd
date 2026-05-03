@@ -40,7 +40,11 @@ denominator) of each region.}
 
 \item{model}{Character. \code{"poisson"} or \code{"binomial"}.}
 
-\item{seed}{Integer or \code{NULL}.}
+\item{seed}{Integer or \code{NULL}. Random seed for the Monte
+Carlo loop. When non-\code{NULL}, the user's pre-existing RNG
+state is saved on entry and restored on exit, so the seed
+argument affects only this call and does not leak into
+subsequent draws in the user's session.}
 
 \item{n_cores}{Integer. OpenMP threads.}
 }

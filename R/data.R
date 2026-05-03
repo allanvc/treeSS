@@ -82,6 +82,12 @@
 #' @details
 #' The tree has 410 leaves (4-character ICD-10 codes) and 622 total nodes.
 #'
+#' @source
+#' Constructed from the leaf-level codes in \code{\link{rj_mortality}}, which
+#' in turn come from the Brazilian Mortality Information System (SIM)
+#' maintained by DATASUS. See \code{data-raw/} in the GitHub repository for
+#' the build script.
+#'
 #' @seealso \code{\link{rj_mortality}}
 #'
 #' @examples
@@ -138,6 +144,10 @@
 #' @details
 #' 3-level tree: Root -> Light conditions (Daylight/Darkness) -> Road type
 #' (5 types) -> Junction detail (7 types). 68 leaf categories.
+#'
+#' @source
+#' Constructed from the leaf-level codes in \code{\link{london_collisions}}.
+#' See \code{data-raw/} in the GitHub repository for the build script.
 #'
 #' @seealso \code{\link{london_collisions}}
 #'
@@ -233,6 +243,10 @@
 #' 4-level tree: Root -> Crime Type -> Description -> Location Group.
 #' 2,486 leaf nodes. Leaf node IDs follow the pattern
 #' \code{"<TYPE> | <DESCRIPTION> | <LOCATION>"}.
+#'
+#' @source
+#' Constructed from the leaf-level codes in \code{\link{chicago_crimes}}.
+#' See \code{data-raw/} in the GitHub repository for the build script.
 #'
 #' @seealso \code{\link{chicago_crimes}}
 #'

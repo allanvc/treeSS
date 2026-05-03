@@ -12,6 +12,10 @@ A data.frame with 2,841 rows and 2 columns:
     for the root.}
 }
 }
+\source{
+Constructed from the leaf-level codes in \code{\link{chicago_crimes}}.
+See \code{data-raw/} in the GitHub repository for the build script.
+}
 \usage{
 chicago_tree
 }

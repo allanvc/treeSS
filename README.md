@@ -11,8 +11,12 @@ cases significantly exceed expectations under a Poisson model.
 ## Installation
 
 ```r
-# From source
-install.packages("treeSS_0.1.6.tar.gz", repos = NULL, type = "source")
+# From CRAN (after acceptance)
+install.packages("treeSS")
+
+# Development version from GitHub
+# install.packages("remotes")
+remotes::install_github("allanvc/treeSS")
 ```
 
 ## Quick start
