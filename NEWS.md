@@ -111,4 +111,5 @@ a single `print()` call dominates the document.
 * Helper functions: `build_zones()`, `aggregate_tree()`,
   `filter_clusters()`.
 * S3 `print()` and `summary()` methods for all scan result classes.
-* Monte Carlo simulation for p-value computation using the Poisson model.
+* Monte Carlo simulation for p-value computation, with the null resampler matched to the chosen model (multinomial conditional
+resampling for Poisson; binomial conditional resampling for binomial).

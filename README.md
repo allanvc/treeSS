@@ -6,7 +6,8 @@ Implements the tree-spatial scan statistic (Cançado et al., 2025), which
 detects clusters that are anomalous in both geographic space and a
 hierarchical tree simultaneously. The method searches over circular spatial
 zones and branches of a classification tree to find regions where observed
-cases significantly exceed expectations under a Poisson model.
+cases significantly exceed expectations under a Poisson or binomial model,
+selectable via the `model` argument.
 
 ## Installation
 
