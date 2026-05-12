@@ -1,3 +1,61 @@
+# treeSS 0.1.44
+
+## CRAN reviewer feedback
+
+Address the four items requested in the first-round CRAN review.
+
+## DESCRIPTION
+
+* Single-quote software/API names per the CRAN cookbook: `OpenMP` is
+  now written as `'OpenMP'` in the package description.
+  Reference:
+  <https://contributor.r-project.org/cran-cookbook/description_issues.html#formatting-software-names>
+
+* Add DOI links to the two references that were previously cited
+  without a link, using the CRAN-mandated
+  `authors (year) <doi:...>` form (no space after `doi:`, no space
+  inside the angle brackets):
+    - Kulldorff (1997) <doi:10.1080/03610929708831995>
+    - Kulldorff et al. (2003) <doi:10.1111/1541-0420.00039>
+  Reference:
+  <https://contributor.r-project.org/cran-cookbook/description_issues.html#references>
+
+## Documentation (R/print.R, R/iterative_scan.R, man/*.Rd)
+
+* Added missing `\value` tags (and the corresponding `@return`
+  roxygen blocks) to the seven `print()`/`summary()` method Rd
+  files flagged by CRAN. Each documents that the method invisibly
+  returns its input object unchanged and is called for its
+  printing side effect, with a description of the fields written
+  to the console (and, for `summary()` methods, the additional
+  fields beyond those of the matching `print()` method):
+    - `print.circular_scan.Rd`
+    - `print.iterative_scan.Rd`
+    - `print.tree_scan.Rd`
+    - `print.treespatial_scan.Rd`
+    - `summary.circular_scan.Rd`
+    - `summary.tree_scan.Rd`
+    - `summary.treespatial_scan.Rd`
+  Reference:
+  <https://contributor.r-project.org/cran-cookbook/docs_issues.html#missing-value-tags-in-.rd-files>
+
+## Bug fixes (R/generate_example_data.R, man/generate_example_data.Rd)
+
+* `generate_example_data()` no longer sets a hardcoded seed within
+  the function: the default of the `seed` argument is now `NULL`
+  (previously `123L`). When the user does not pass a seed, the
+  function draws from the user's session-level RNG state without
+  modifying it; when the user passes an explicit integer, the
+  existing save-and-restore logic (introduced in 0.1.43) still
+  applies. The `\usage{}` block and the `\item{seed}{...}`
+  description of the corresponding Rd file have been updated to
+  match. The roxygen example
+  (`ex <- generate_example_data(seed = 42)`) is unchanged: it
+  passes an explicit seed and so remains reproducible.
+  Reference:
+  <https://contributor.r-project.org/cran-cookbook/code_issues.html#setting-a-specific-seed>
+
+
 # treeSS 0.1.43
 
 ## CRAN-readiness pass

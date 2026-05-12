@@ -1,4 +1,4 @@
-% Generated manually for treeSS 0.1.41; keep in sync with roxygen comments
+% Generated manually for treeSS 0.1.44; keep in sync with roxygen comments
 % in R/print.R. devtools::document() will regenerate this file from those
 % comments without manual intervention.
 \name{summary.circular_scan}
@@ -15,6 +15,14 @@ In particular, \code{max_show} controls how many region IDs of
 the most-likely cluster are printed in full before truncating
 with \code{"... and N more"}; see
 \code{\link{print.circular_scan}} for details.}
+}
+\value{
+Invisibly returns \code{object} (the input object of
+class \code{"circular_scan"}), unchanged. Called for the side
+effect of printing the same fields as
+\code{print.circular_scan()}, followed by a numeric summary
+(min, quartiles, median, mean, max) of the simulated
+log-likelihood-ratio distribution under the null.
 }
 \description{
 Prints the same fields as \code{print.circular_scan()}, followed

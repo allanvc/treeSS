@@ -9,6 +9,6 @@
 ^README\.Rmd$
 ^cran-comments\.md$
 ^CRAN-RELEASE$
-^build$
 ^\.gitignore$
 ^.*\.tar\.gz$
+^CRAN-SUBMISSION$

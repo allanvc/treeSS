@@ -1,4 +1,4 @@
-% Generated manually for treeSS 0.1.41; keep in sync with roxygen comments
+% Generated manually for treeSS 0.1.44; keep in sync with roxygen comments
 % in R/print.R. devtools::document() will regenerate this file from those
 % comments without manual intervention.
 \name{print.tree_scan}
@@ -17,6 +17,16 @@ hundreds or thousands of leaves (such as the root of a deep
 tree); set \code{max_show = -1L} to print every leaf.}
 
 \item{...}{Further arguments passed to or from other methods.}
+}
+\value{
+Invisibly returns \code{x} (the input object of class
+\code{"tree_scan"}), unchanged. Called for the side effect of
+printing a human-readable summary of the scan result to the
+console: the total cases and population, the number of tree
+nodes, the number of Monte Carlo simulations, the contents of
+the most likely cluster (node ID, leaf IDs, cases, expected
+count, log-likelihood ratio, and p-value), and the top
+significant cuts at the chosen significance threshold.
 }
 \description{
 Print Method for tree_scan Objects

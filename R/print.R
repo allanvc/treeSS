@@ -47,6 +47,15 @@
 #'   size) to print every region. Mirrors the convention used by
 #'   \pkg{tibble} for printing wide tables.
 #' @param ... Further arguments passed to or from other methods.
+#'
+#' @return Invisibly returns \code{x} (the input object of class
+#'   \code{"circular_scan"}), unchanged. Called for the side effect
+#'   of printing a human-readable summary of the scan result to the
+#'   console: the total cases and population, the number of regions
+#'   scanned, the number of Monte Carlo simulations, and the
+#'   contents of the most likely cluster (region IDs, cases,
+#'   expected count, population, relative risk, log-likelihood
+#'   ratio, and p-value).
 #' @export
 print.circular_scan <- function(x, max_show = 10L, ...) {
   cat("Circular Spatial Scan Statistic\n")
@@ -89,6 +98,13 @@ print.circular_scan <- function(x, max_show = 10L, ...) {
 #'   the most-likely cluster are printed in full before truncating
 #'   with \code{"... and N more"}; see
 #'   \code{\link{print.circular_scan}} for details.
+#'
+#' @return Invisibly returns \code{object} (the input object of
+#'   class \code{"circular_scan"}), unchanged. Called for the side
+#'   effect of printing the same fields as
+#'   \code{print.circular_scan()}, followed by a numeric summary
+#'   (min, quartiles, median, mean, max) of the simulated
+#'   log-likelihood-ratio distribution under the null.
 #' @export
 summary.circular_scan <- function(object, ...) {
   print.circular_scan(object, ...)
@@ -106,6 +122,15 @@ summary.circular_scan <- function(object, ...) {
 #'   hundreds or thousands of leaves (such as the root of a deep
 #'   tree); set \code{max_show = -1L} to print every leaf.
 #' @param ... Further arguments passed to or from other methods.
+#'
+#' @return Invisibly returns \code{x} (the input object of class
+#'   \code{"tree_scan"}), unchanged. Called for the side effect of
+#'   printing a human-readable summary of the scan result to the
+#'   console: the total cases and population, the number of tree
+#'   nodes, the number of Monte Carlo simulations, the contents of
+#'   the most likely cluster (node ID, leaf IDs, cases, expected
+#'   count, log-likelihood ratio, and p-value), and the top
+#'   significant cuts at the chosen significance threshold.
 #' @export
 print.tree_scan <- function(x, max_show = 10L, ...) {
   cat("Tree-Based Scan Statistic\n")
@@ -148,6 +173,13 @@ print.tree_scan <- function(x, max_show = 10L, ...) {
 #'   the most-likely cluster are printed in full before truncating
 #'   with \code{"... and N more"}; see \code{\link{print.tree_scan}}
 #'   for details.
+#'
+#' @return Invisibly returns \code{object} (the input object of
+#'   class \code{"tree_scan"}), unchanged. Called for the side
+#'   effect of printing the same fields as
+#'   \code{print.tree_scan()}, followed by the full table of all
+#'   candidate cuts (not just significant ones) ordered by
+#'   decreasing log-likelihood ratio.
 #' @export
 summary.tree_scan <- function(object, ...) {
   print.tree_scan(object, ...)
@@ -167,6 +199,15 @@ summary.tree_scan <- function(object, ...) {
 #'   denominator) or many regions; set \code{max_show = -1L} to
 #'   print every value. Mirrors the convention used by \pkg{tibble}.
 #' @param ... Further arguments passed to or from other methods.
+#'
+#' @return Invisibly returns \code{x} (the input object of class
+#'   \code{"treespatial_scan"}), unchanged. Called for the side
+#'   effect of printing a human-readable summary of the scan result
+#'   to the console: the total population, the number of regions
+#'   and tree nodes, the number of Monte Carlo simulations, and the
+#'   contents of the most likely cluster (tree node, leaf IDs,
+#'   region IDs, cases, expected count, population, relative risk,
+#'   log-likelihood ratio, and p-value).
 #' @export
 print.treespatial_scan <- function(x, max_show = 10L, ...) {
   cat("Tree-Spatial Scan Statistic\n")
@@ -208,6 +249,14 @@ print.treespatial_scan <- function(x, max_show = 10L, ...) {
 #'   cluster are printed in full before truncating with \code{"...
 #'   and N more"}; see \code{\link{print.treespatial_scan}} for
 #'   details.
+#'
+#' @return Invisibly returns \code{object} (the input object of
+#'   class \code{"treespatial_scan"}), unchanged. Called for the
+#'   side effect of printing the same fields as
+#'   \code{print.treespatial_scan()}, followed by the top-10
+#'   branches by total case count and a numeric summary (min,
+#'   quartiles, median, mean, max) of the simulated
+#'   log-likelihood-ratio distribution under the null.
 #' @export
 summary.treespatial_scan <- function(object, ...) {
   print.treespatial_scan(object, ...)

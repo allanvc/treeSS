@@ -1,4 +1,4 @@
-% Generated manually for treeSS 0.1.41; keep in sync with roxygen comments
+% Generated manually for treeSS 0.1.44; keep in sync with roxygen comments
 % in R/print.R. devtools::document() will regenerate this file from those
 % comments without manual intervention.
 \name{print.circular_scan}
@@ -18,6 +18,16 @@ size) to print every region. Mirrors the convention used by
 \pkg{tibble} for printing wide tables.}
 
 \item{...}{Further arguments passed to or from other methods.}
+}
+\value{
+Invisibly returns \code{x} (the input object of class
+\code{"circular_scan"}), unchanged. Called for the side effect
+of printing a human-readable summary of the scan result to the
+console: the total cases and population, the number of regions
+scanned, the number of Monte Carlo simulations, and the
+contents of the most likely cluster (region IDs, cases,
+expected count, population, relative risk, log-likelihood
+ratio, and p-value).
 }
 \description{
 Print Method for circular_scan Objects

@@ -351,6 +351,15 @@ iterative_scan <- function(cases = NULL, population = NULL,
 #'   summary compact; pass \code{max_show = -1L} to include both
 #'   \code{leaf_ids} and \code{region_ids} in the printed table.
 #' @param ... Further arguments passed to or from other methods.
+#'
+#' @return Invisibly returns \code{x} (the input object of class
+#'   \code{"iterative_scan"}), unchanged. Called for the side
+#'   effect of printing a human-readable summary of the iterative
+#'   scan result to the console: the scan type, the number of
+#'   iterations performed, the significance threshold (applied to
+#'   Holm-Bonferroni adjusted p-values), the number of significant
+#'   clusters after correction, and a per-iteration table of
+#'   detected clusters.
 #' @export
 print.iterative_scan <- function(x, max_show = 10L, ...) {
   cat("Iterative Scan\n")

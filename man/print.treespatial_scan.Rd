@@ -1,4 +1,4 @@
-% Generated manually for treeSS 0.1.41; keep in sync with roxygen comments
+% Generated manually for treeSS 0.1.44; keep in sync with roxygen comments
 % in R/print.R. devtools::document() will regenerate this file from those
 % comments without manual intervention.
 \name{print.treespatial_scan}
@@ -19,6 +19,16 @@ denominator) or many regions; set \code{max_show = -1L} to
 print every value. Mirrors the convention used by \pkg{tibble}.}
 
 \item{...}{Further arguments passed to or from other methods.}
+}
+\value{
+Invisibly returns \code{x} (the input object of class
+\code{"treespatial_scan"}), unchanged. Called for the side
+effect of printing a human-readable summary of the scan result
+to the console: the total population, the number of regions
+and tree nodes, the number of Monte Carlo simulations, and the
+contents of the most likely cluster (tree node, leaf IDs,
+region IDs, cases, expected count, population, relative risk,
+log-likelihood ratio, and p-value).
 }
 \description{
 Print Method for treespatial_scan Objects

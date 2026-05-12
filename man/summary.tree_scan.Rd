@@ -1,4 +1,4 @@
-% Generated manually for treeSS 0.1.41; keep in sync with roxygen comments
+% Generated manually for treeSS 0.1.44; keep in sync with roxygen comments
 % in R/print.R. devtools::document() will regenerate this file from those
 % comments without manual intervention.
 \name{summary.tree_scan}
@@ -15,6 +15,14 @@ In particular, \code{max_show} controls how many leaf IDs of
 the most-likely cluster are printed in full before truncating
 with \code{"... and N more"}; see \code{\link{print.tree_scan}}
 for details.}
+}
+\value{
+Invisibly returns \code{object} (the input object of
+class \code{"tree_scan"}), unchanged. Called for the side
+effect of printing the same fields as
+\code{print.tree_scan()}, followed by the full table of all
+candidate cuts (not just significant ones) ordered by
+decreasing log-likelihood ratio.
 }
 \description{
 Prints the same fields as \code{print.tree_scan()}, followed by

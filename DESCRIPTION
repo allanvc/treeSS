@@ -1,7 +1,7 @@
 Package: treeSS
 Type: Package
 Title: Tree-Spatial Scan Statistic for Cluster Detection
-Version: 0.1.43
+Version: 0.1.44
 Authors@R: c(
     person("Allan", "Quadros", email = "allanvcq@gmail.com",
            role = c("aut", "cre"),
@@ -15,13 +15,14 @@ Authors@R: c(
 Description: Implements the tree-spatial scan statistic for detecting clusters
     that combine both spatial and hierarchical structures, as proposed by
     Cancado et al. (2025) <doi:10.1007/s10651-025-00670-w>. The method extends
-    Kulldorff's (1997) circular spatial scan statistic and the tree-based scan
-    statistic (Kulldorff et al. 2003) by searching for anomalies in both
+    Kulldorff (1997) <doi:10.1080/03610929708831995> circular spatial scan
+    statistic and the tree-based scan statistic of Kulldorff et al. (2003)
+    <doi:10.1111/1541-0420.00039> by searching for anomalies in both
     geographic regions and branches of hierarchical trees simultaneously. The
     package also provides standalone implementations of Kulldorff's circular
     spatial scan statistic and the tree-based scan statistic. Statistical
     significance is assessed via Monte Carlo simulation under a Poisson or
-    binomial model, with optional OpenMP parallelization.
+    binomial model, with optional 'OpenMP' parallelization.
 License: GPL (>= 3)
 URL: https://github.com/allanvc/treeSS
 BugReports: https://github.com/allanvc/treeSS/issues
@@ -37,3 +38,9 @@ VignetteBuilder: knitr
 RoxygenNote: 7.3.2
 Config/testthat/edition: 3
 NeedsCompilation: yes
+Packaged: 2026-05-11 23:00:00 UTC; allan
+Author: Allan Quadros [aut, cre] (<https://orcid.org/0000-0003-3250-5380>),
+  Andre L. F. Cancado [aut] (<https://orcid.org/0000-0002-7019-8521>),
+  Geiziane S. Oliveira [aut],
+  Luiz H. Duczmal [aut]
+Maintainer: Allan Quadros <allanvcq@gmail.com>
