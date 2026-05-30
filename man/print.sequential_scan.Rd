@@ -1,0 +1,31 @@
+% Generated manually for treeSS 0.1.45; keep in sync with roxygen comments
+% in R/print.R. devtools::document() will regenerate this file from those
+% comments without manual intervention.
+\name{print.sequential_scan}
+\alias{print.sequential_scan}
+\title{Print Method for sequential_scan Objects}
+\usage{
+\method{print}{sequential_scan}(x, max_show = 10L, ...)
+}
+\arguments{
+\item{x}{An object of class \code{"sequential_scan"}.}
+
+\item{max_show}{Integer. Maximum number of region IDs (or leaf IDs,
+for tree-only scans) to display in full per iteration before
+truncating with \code{"... and N more"}. Default \code{10L}; set
+\code{max_show = -1L} to print every value.}
+
+\item{...}{Further arguments passed to or from other methods.}
+}
+\value{
+Invisibly returns \code{x} (the input object of class
+\code{"sequential_scan"}), unchanged. Called for the side effect
+of printing a human-readable summary of the sequential scan
+result to the console: the scan type, the buffer size, the
+number of iterations performed, the significance threshold, the
+number of significant clusters, and a per-iteration table of
+detected clusters.
+}
+\description{
+Print Method for sequential_scan Objects
+}

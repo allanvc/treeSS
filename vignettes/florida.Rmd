@@ -1,0 +1,410 @@
+---
+title: "Building treeSS inputs from raw data: Florida mortality 2016"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Building treeSS inputs from raw data: Florida mortality 2016}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE, comment = "#>",
+  eval = FALSE
+)
+```
+
+## What this vignette adds
+
+The companion vignette
+(`vignette("introduction", package = "treeSS")`) walks through the
+Rio de Janeiro dataset, which is **already pre-assembled** in
+exactly the long format that `treespatial_scan()` expects: one row
+per (region, leaf), with parallel columns for cases, population,
+region centroids, and tree node identifiers.
+
+In practice, most users will start one step earlier: with a raw
+case-level table, a separately maintained polygon layer (counties,
+boroughs, census tracts...), and a classification that needs to be
+turned into a tree. This vignette goes through exactly that workflow
+on the **`fl_deaths`** dataset shipped with the package, mirroring
+the annotated example file
+`inst/examples/example_florida.R`.
+
+What you will see:
+
+  1. How to **build the ICD-10 tree** directly from the codes that
+     appear in the raw data.
+  2. How to **assemble parallel vectors** of `(cases, population,
+     region_id, x, y, node_id)` by joining the case table to a
+     polygon layer fetched on demand.
+  3. How to run `treespatial_scan()`, `filter_clusters()`, and
+     `sequential_scan()` on the assembled inputs and visualise the
+     results.
+
+The dataset is the CDC WONDER Compressed Mortality File 1999–2016
+restricted to Florida deaths in 2016. It covers 65 of Florida's 67
+counties, 253 ICD-10 codes, and ≈157,000 deaths.
+
+---
+
+## 1. Load the raw data
+
+`fl_deaths` ships in **raw long form** — one row per (county_fips,
+icd10_code) combination — with population and an ICD-10 description
+column attached:
+
+```{r fl-load}
+library(treeSS)
+data(fl_deaths)
+
+str(fl_deaths)
+#> 'data.frame': N obs. of 5 variables:
+#>  $ county_fips: chr  ...
+#>  $ icd10_code : chr  "C56" "C61" "I10" ...
+#>  $ icd10_desc : chr  ...
+#>  $ deaths     : int  ...
+#>  $ population : int  ...
+
+c(rows         = nrow(fl_deaths),
+  counties     = length(unique(fl_deaths$county_fips)),
+  icd10_codes  = length(unique(fl_deaths$icd10_code)),
+  total_deaths = sum(fl_deaths$deaths))
+```
+
+Note what `fl_deaths` does **not** carry:
+
+  * No tree object — we have ICD-10 codes but no parent–child structure.
+  * No spatial coordinates — we have county FIPS codes but no centroids.
+
+We need to supply both before calling the scan.
+
+---
+
+## 2. Build the ICD-10 tree from the codes in the data
+
+The codes in `fl_deaths` use two granularities:
+
+  * **3-character codes** (e.g. `"C56"`, `"R54"`) treated as leaves at
+    the 3-character level — the death certificate was coded to that
+    precision and no further.
+  * **5-character codes** with a dot (e.g. `"A04.7"`) — leaves under a
+    3-character internal parent.
+
+We build a three-level tree (Root → ICD-10 chapter → 3-character
+node → 5-character leaf) directly from the codes that *actually
+appear* in `fl_deaths`, so the tree contains no unused nodes:
+
+```{r fl-tree}
+icd_codes <- sort(unique(fl_deaths$icd10_code))
+
+parsed <- data.frame(
+  code  = icd_codes,
+  three = ifelse(grepl("\\.", icd_codes),
+                  sub("\\..*", "", icd_codes),
+                  icd_codes),
+  is_three_leaf = !grepl("\\.", icd_codes) & nchar(icd_codes) == 3,
+  stringsAsFactors = FALSE
+)
+
+# Map 3-character codes to ICD-10 chapters
+icd_chapter_of <- function(three) {
+  L   <- substr(three, 1, 1)
+  num <- suppressWarnings(as.integer(substr(three, 2, 3)))
+  switch(L,
+    A = "I_AB", B = "I_AB",
+    C = "II_C_D",
+    D = if (!is.na(num) && num <= 48) "II_C_D" else "III_D",
+    E = "IV_E",  F = "V_F",  G = "VI_G",
+    H = if (!is.na(num) && num <= 59) "VII_H" else "VIII_H",
+    I = "IX_I",  J = "X_J",  K = "XI_K", L = "XII_L",
+    M = "XIII_M", N = "XIV_N", O = "XV_O", P = "XVI_P",
+    Q = "XVII_Q", R = "XVIII_R",
+    S = "XIX_S_T", T = "XIX_S_T",
+    V = "XX_V_Y", W = "XX_V_Y", X = "XX_V_Y", Y = "XX_V_Y",
+    "Other"
+  )
+}
+parsed$chapter <- sapply(parsed$three, icd_chapter_of)
+
+fl_tree <- unique(rbind(
+  data.frame(node_id = "Root", parent_id = NA_character_,
+             stringsAsFactors = FALSE),
+  data.frame(node_id = unique(parsed$chapter), parent_id = "Root",
+             stringsAsFactors = FALSE),
+  unique(data.frame(node_id = parsed$three, parent_id = parsed$chapter,
+                    stringsAsFactors = FALSE)),
+  data.frame(
+    node_id   = parsed$code[!parsed$is_three_leaf],
+    parent_id = parsed$three[!parsed$is_three_leaf],
+    stringsAsFactors = FALSE
+  )
+))
+
+# Sanity check: every code in fl_deaths is a leaf of fl_tree
+parents <- unique(fl_tree$parent_id[!is.na(fl_tree$parent_id)])
+leaves  <- setdiff(fl_tree$node_id, parents)
+stopifnot(length(setdiff(icd_codes, leaves)) == 0)
+
+c(total_nodes = nrow(fl_tree),
+  chapters    = length(unique(parsed$chapter)),
+  leaves      = length(leaves))
+```
+
+The result is a two-column data.frame `fl_tree` with columns
+`node_id` and `parent_id`. The root has `parent_id = NA`. The tree
+is acyclic by construction.
+
+Two notes on style:
+
+  * `treeSS` accepts the tree either as this two-column data.frame
+    via the `tree =` argument, or as parallel vectors via the
+    `tree_node_id =` and `tree_parent_id =` arguments. Both produce
+    identical scans.
+  * `node_id` is a string here, but `treeSS` is type-agnostic: any
+    R type that supports `==` and can be coerced to character will
+    work, including integers and factors.
+
+---
+
+## 3. Download polygons and centroids
+
+`fl_deaths` carries county FIPS codes but not coordinates. We fetch
+the 2016 county boundaries from \CRANpkg{tigris}, project to WGS84,
+and compute centroids:
+
+```{r fl-polygons}
+library(sf)
+library(tigris)
+
+fl_map <- counties(state = "FL", cb = TRUE, year = 2016)
+fl_map <- st_transform(fl_map, 4326)
+
+centroids   <- st_centroid(st_geometry(fl_map))
+coords      <- st_coordinates(centroids)
+fl_map$x    <- coords[, "X"]
+fl_map$y    <- coords[, "Y"]
+```
+
+Two technical points worth stating explicitly:
+
+  * **Centroids of `sf` objects.** `st_centroid()` is exact under
+    `sf` and respects the polygon geometry; if you use
+    `st_centroid()` after `st_transform()`, the centroid is computed
+    in WGS84 coordinates, which is what `treespatial_scan()` expects
+    for the small spatial extents of US counties / Brazilian
+    municipalities / London boroughs.
+  * **`tigris` requires network access.** A first run downloads
+    cached shapefiles to a user-configurable cache directory; the
+    second run is instant.
+
+---
+
+## 4. Assemble parallel vectors
+
+`treespatial_scan()` consumes six parallel vectors of identical
+length — one row per (region, leaf) observation. We join the case
+table to the population (which is constant per county in
+`fl_deaths`) and to the coordinates from `fl_map`:
+
+```{r fl-vectors}
+# Per-county population: same value across all leaves, so take any one
+fl_pop <- aggregate(population ~ county_fips, data = fl_deaths,
+                     FUN = max)
+
+# Per-county centroids from the polygon layer
+xy <- data.frame(county_fips = fl_map$GEOID,
+                  x = fl_map$x, y = fl_map$y,
+                  stringsAsFactors = FALSE)
+
+dat <- merge(fl_deaths[, c("county_fips", "icd10_code", "deaths")],
+             fl_pop, by = "county_fips")
+dat <- merge(dat, xy, by = "county_fips")
+
+# Integer region_id is convenient downstream; here we use the rank
+# of county_fips in alphabetical order
+dat$region_id <- as.integer(factor(
+  dat$county_fips, levels = sort(unique(dat$county_fips))
+))
+
+# Keep only rows with at least one death (sparse-by-default scan)
+dat <- dat[dat$deaths > 0, ]
+
+c(long_rows = nrow(dat),
+  counties  = length(unique(dat$region_id)))
+```
+
+At this point `dat` is exactly the same long-format shape as
+`rj_mortality` in the companion vignette: one row per
+(county, ICD-10) combination, with parallel columns of cases,
+population, coordinates, and node identifier.
+
+---
+
+## 5. Run the tree-spatial scan
+
+```{r fl-scan}
+result_fl <- treespatial_scan(
+  cases       = dat$deaths,
+  population  = dat$population,
+  region_id   = dat$region_id,
+  x           = dat$x,
+  y           = dat$y,
+  node_id     = dat$icd10_code,
+  tree        = fl_tree,
+  max_pop_pct = 0.05,
+  nsim        = 999, seed = 2016,
+  n_cores     = 4L
+)
+print(result_fl)
+```
+
+The most likely cluster typically falls on a specific ICD-10 leaf
+code (5-character) concentrated in one or two adjacent counties.
+The Florida dataset gives a different pattern from RJ because the
+overall mortality counts in Florida are much higher and the
+geography is much larger; the joint scan picks out narrow,
+cause-specific excess rather than broad geographic concentrations.
+
+`max_pop_pct = 0.05` is more restrictive than the default of
+`0.50`. Larger study areas like Florida benefit from a tighter cap
+because the default would otherwise allow zones covering half the
+state's population, which is usually not the size of cluster the
+analyst is looking for.
+
+---
+
+## 6. Distinct secondary clusters (paper-faithful)
+
+```{r fl-filter}
+filter_clusters(result_fl)[1:5,
+                            c("node_id", "n_regions",
+                              "cases", "expected", "llr",
+                              "pvalue")]
+```
+
+As in the RJ analysis, `filter_clusters()` performs no additional
+Monte Carlo; the secondary clusters are read from
+`result_fl$secondary_clusters` and filtered for distinctness in
+$O(k^2)$ time.
+
+---
+
+## 7. Sequential scan when the MLC may shadow
+
+```{r fl-seq}
+seq_fl <- sequential_scan(
+  cases       = dat$deaths,
+  population  = dat$population,
+  region_id   = dat$region_id,
+  x           = dat$x,
+  y           = dat$y,
+  node_id     = dat$icd10_code,
+  tree        = fl_tree,
+  max_iter    = 5L, alpha = 0.05,
+  nsim        = 999, seed = 2016,
+  max_pop_pct = 0.05, n_cores = 4L
+)
+print(seq_fl)
+```
+
+Each iteration of `sequential_scan()` runs a fresh Monte Carlo on
+the dataset with the previous iteration's cluster regions
+removed, so the $p$-value of each detected cluster is computed
+against the correct conditional null distribution. The procedure
+stops at the first non-significant iteration or `max_iter`,
+whichever comes first.
+
+---
+
+## 8. Visualise the clusters
+
+`get_cluster_regions()` returns a tidy data.frame that can be
+joined to `fl_map` for plotting:
+
+```{r fl-plot}
+library(ggplot2)
+library(dplyr)
+
+region_info <- unique(dat[, c("region_id", "county_fips")])
+
+cr_seq <- merge(
+  get_cluster_regions(seq_fl, overlap = TRUE),
+  region_info, by = "region_id"
+)
+
+# Cross-join the polygon layer with every iteration panel so all
+# counties appear in every panel (those outside the analysis
+# dataset show as NA-coloured rather than as an extra empty panel)
+panels       <- unique(cr_seq$panel)
+cr_seq_keys  <- unique(cr_seq[, c("county_fips", "cluster",
+                                   "node_id", "llr", "pvalue",
+                                   "panel")])
+fl_seq_plot <- merge(
+  do.call(rbind,
+          lapply(panels, function(p) cbind(fl_map, panel = p))),
+  cr_seq_keys,
+  by.x = c("GEOID", "panel"),
+  by.y = c("county_fips", "panel"),
+  all.x = TRUE
+)
+
+ggplot(fl_seq_plot) +
+  geom_sf(aes(fill = factor(cluster)), color = "gray40",
+          linewidth = 0.12, alpha = 0.75) +
+  scale_fill_manual(
+    values = c("#C44E52", "#4C72B0", "#55A868",
+               "#8172B2", "#CCB974"),
+    na.value = "gray95", na.translate = FALSE
+  ) +
+  facet_wrap(~ panel, nrow = 1) +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+
+The cross-join trick on `panels` is what lets every county appear
+in every iteration panel; without it, a simple
+`merge(fl_map, cr_seq, all.x = TRUE)` would leave one extra
+"NA" facet for the two Florida counties not present in the
+mortality dataset.
+
+The complete script with full plot annotations, file output and
+summary tables is at
+`inst/examples/example_florida.R`.
+
+---
+
+## Recap
+
+The Florida workflow demonstrates the three preprocessing steps that
+the RJ vignette skips because `rj_mortality` arrives pre-assembled:
+
+  1. Build the tree from the codes in the data (no hand-coded
+     hierarchy).
+  2. Pull polygons and centroids on demand from a spatial source
+     (\CRANpkg{tigris} for US, \CRANpkg{geobr} for Brazil, etc.).
+  3. Join everything into parallel long-form vectors.
+
+After step 3, the rest of the analysis is identical to the RJ
+vignette: a single `treespatial_scan()` call, optional
+`filter_clusters()` or `sequential_scan()` post-processing, and
+visualisation via `get_cluster_regions()`.
+
+---
+
+## References
+
+Cançado, A. L. F., Oliveira, G. S., Quadros, A. V. C., & Duczmal, L. H.
+(2025). A tree-spatial scan statistic. *Environmental and Ecological
+Statistics*, 32, 953–978.
+[doi:10.1007/s10651-025-00670-w](https://doi.org/10.1007/s10651-025-00670-w)
+
+Kulldorff, M. (1997). A spatial scan statistic. *Communications in
+Statistics — Theory and Methods*, 26(6), 1481–1496.
+
+Zhang, Z., Assunção, R., & Kulldorff, M. (2010). Spatial scan
+statistics adjusted for multiple clusters. *Journal of Probability
+and Statistics*, 2010, 642379.
+
+Centers for Disease Control and Prevention. *CDC WONDER Compressed
+Mortality File 1999–2016*. National Center for Health Statistics.

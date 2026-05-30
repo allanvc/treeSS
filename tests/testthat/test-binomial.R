@@ -59,15 +59,15 @@ test_that("n_cores > 1 path runs (treespatial)", {
                   r2$most_likely_cluster$region_ids)
 })
 
-test_that("iterative_scan accepts model = 'binomial' and n_cores", {
+test_that("sequential_scan accepts model = 'binomial' and n_cores", {
   skip_on_cran()
   ex <- generate_example_data(n_regions = 12, seed = 33)
-  res <- iterative_scan(
+  res <- sequential_scan(
     cases = ex$cases, population = ex$population,
     region_id = ex$region_id, x = ex$x, y = ex$y,
     node_id = ex$node_id, tree = ex$tree,
     max_iter = 2, nsim = 29, seed = 1,
     model = "binomial", n_cores = 2L, verbose = FALSE
   )
-  expect_s3_class(res, "iterative_scan")
+  expect_s3_class(res, "sequential_scan")
 })

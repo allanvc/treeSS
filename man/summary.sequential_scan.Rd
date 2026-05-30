@@ -1,0 +1,22 @@
+% Generated manually for treeSS 0.1.45; keep in sync with roxygen comments
+% in R/print.R.
+\name{summary.sequential_scan}
+\alias{summary.sequential_scan}
+\title{Summary Method for sequential_scan Objects}
+\usage{
+\method{summary}{sequential_scan}(object, ...)
+}
+\arguments{
+\item{object}{An object of class \code{"sequential_scan"}.}
+
+\item{...}{Passed to \code{print.sequential_scan()}.}
+}
+\value{
+Invisibly returns \code{object}. Called for the side effect
+of printing the same fields as \code{print.sequential_scan()}
+followed by, for each iteration, the cluster composition
+(region IDs or leaf IDs).
+}
+\description{
+Summary Method for sequential_scan Objects
+}

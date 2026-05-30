@@ -45,7 +45,7 @@ Statistics}, 32, 953--978. \doi{10.1007/s10651-025-00670-w}
 }
 \seealso{
 \code{\link{treespatial_scan}}, \code{\link{circular_scan}},
-\code{\link{tree_scan}}, \code{\link{iterative_scan}}
+\code{\link{tree_scan}}, \code{\link{sequential_scan}}
 }
 \examples{
 data(london_collisions); data(london_tree)

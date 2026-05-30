@@ -64,7 +64,8 @@ cr <- get_cluster_regions(result, n_clusters = 3, overlap = FALSE)
 - `treespatial_scan()` — tree-spatial scan (main function)
 - `circular_scan()` — Kulldorff's spatial scan
 - `tree_scan()` — tree-based scan
-- `filter_clusters()` — non-overlapping secondary clusters
+- `filter_clusters()` — non-overlapping secondary clusters (Cançado et al. 2025)
+- `sequential_scan()` — sequential adjustment for secondary clusters (Zhang, Assunção & Kulldorff 2010)
 - `get_cluster_regions()` — cluster membership for any visualization package
 
 ## Visualization

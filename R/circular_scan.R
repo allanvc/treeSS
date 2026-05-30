@@ -30,7 +30,7 @@
 #'
 #' @seealso \code{\link{filter_clusters}}, \code{\link{tree_scan}},
 #'   \code{\link{treespatial_scan}}, \code{\link{get_cluster_regions}},
-#'   \code{\link{iterative_scan}}
+#'   \code{\link{sequential_scan}}
 #'
 #' @export
 #' @examples

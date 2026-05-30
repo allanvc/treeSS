@@ -1,8 +1,8 @@
-test_that("get_cluster_regions dispatches on iterative_scan", {
+test_that("get_cluster_regions dispatches on sequential_scan", {
   data(london_collisions)
   data(london_tree)
 
-  iter <- iterative_scan(
+  seq_res <- sequential_scan(
     cases       = london_collisions$cases,
     population  = london_collisions$population,
     region_id   = london_collisions$region_id,
@@ -14,24 +14,20 @@ test_that("get_cluster_regions dispatches on iterative_scan", {
     max_pop_pct = 0.25, n_cores = 1L, verbose = FALSE
   )
 
-  expect_s3_class(iter, "iterative_scan")
-  expect_gt(iter$n_iter, 0)
+  expect_s3_class(seq_res, "sequential_scan")
+  expect_gt(seq_res$n_iter, 0)
 
   # overlap = TRUE: each iteration replicates the full region universe
-  cr <- get_cluster_regions(iter, overlap = TRUE)
+  cr <- get_cluster_regions(seq_res, overlap = TRUE)
   expect_s3_class(cr, "data.frame")
-  expect_true(all(c("cluster", "node_id", "llr", "pvalue",
-                     "pvalue_adjusted", "significant", "panel")
+  expect_true(all(c("cluster", "node_id", "llr", "pvalue", "panel")
                    %in% names(cr)))
-  # Each iteration covers the full set of regions
   per_panel <- table(cr$panel)
-  expect_true(all(per_panel == nrow(iter$regions)))
-  # Total rows = n_iter * n_regions
-  expect_equal(nrow(cr), iter$n_iter * nrow(iter$regions))
+  expect_true(all(per_panel == nrow(seq_res$regions)))
+  expect_equal(nrow(cr), seq_res$n_iter * nrow(seq_res$regions))
 
-  # overlap = FALSE: one row per region
-  cr_no <- get_cluster_regions(iter, overlap = FALSE)
-  expect_equal(nrow(cr_no), nrow(iter$regions))
+  cr_no <- get_cluster_regions(seq_res, overlap = FALSE)
+  expect_equal(nrow(cr_no), nrow(seq_res$regions))
   expect_false("panel" %in% names(cr_no))
 })
 
@@ -57,21 +53,18 @@ test_that("get_cluster_regions still works on single-pass scans", {
 })
 
 
-test_that("get_cluster_regions on iterative_scan rejects tree-only", {
+test_that("get_cluster_regions on sequential_scan rejects tree-only", {
   data(london_collisions)
   data(london_tree)
 
-  # Tree-only iterative: aggregate cases per leaf to make a tree-only call
-  agg <- stats::aggregate(cases ~ node_id, data = london_collisions, FUN = sum)
+  agg <- stats::aggregate(cases ~ node_id, data = london_collisions,
+                          FUN = sum)
   pop <- rep(sum(london_collisions$population) / nrow(agg), nrow(agg))
-  iter_t <- iterative_scan(
+  seq_t <- sequential_scan(
     cases = agg$cases, population = pop, tree = london_tree,
-    tree_node_id = NULL, tree_parent_id = NULL,
-    node_id = NULL, region_id = NULL, x = NULL, y = NULL,
     max_iter = 2, nsim = 19, seed = 42, verbose = FALSE
   )
 
-  # Tree-only iter has no $regions; mapping should error politely
-  expect_error(get_cluster_regions(iter_t),
+  expect_error(get_cluster_regions(seq_t),
                 regexp = "no \\$regions table")
 })

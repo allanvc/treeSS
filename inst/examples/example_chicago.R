@@ -1,10 +1,11 @@
 ##=============================================================================
 ## Example 2: Crime in Chicago, USA (2023)
 ##
-## Two analyses:
-##   1. PAPER-FAITHFUL multi-cluster procedure (Cancado et al. 2025, Sec. 5.1.1):
-##      single scan + filter_clusters / get_cluster_regions(n_clusters = N).
-##   2. (Optional) iterative_scan with Holm-Bonferroni - NOT in paper.
+## Two secondary-cluster analyses are shown:
+##   1. PAPER-FAITHFUL multi-cluster procedure (Cancado et al. 2025,
+##      Sec. 5.1.1): single scan + filter_clusters /
+##      get_cluster_regions(n_clusters = N).
+##   2. sequential_scan() -- Zhang, Assuncao & Kulldorff (2010).
 ##
 ## Population denominator: ACS 2020 5-year residential population per
 ## community area (replaces the bundled compositional 'population' column).
@@ -79,9 +80,9 @@ print(head(fc[, c("node_id", "n_regions", "cases", "expected", "llr", "pvalue")]
             5))
 
 
-## ---- 5. (Optional) Iterative scan with Holm-Bonferroni ----
-cat("\n=== Iterative scan (extension, with Holm-Bonferroni) ===\n")
-iter_chi <- iterative_scan(
+## ---- 5. Sequential scan (Zhang, Assuncao & Kulldorff, 2010) ----
+cat("\n=== Sequential scan (Zhang et al. 2010) ===\n")
+seq_chi <- sequential_scan(
   cases       = chicago_crimes$cases,
   population  = chicago_crimes$pop_residential,
   region_id   = chicago_crimes$region_id,
@@ -93,18 +94,18 @@ iter_chi <- iterative_scan(
   nsim        = 999, seed = 2023,
   max_pop_pct = 0.25, n_cores = 4L
 )
-print(iter_chi)
+print(seq_chi)
 
 
 ## ---- 6. Cluster membership + descriptive lookup ----
 region_info <- unique(chicago_crimes[, c("region_id", "area_number", "name")])
 
-cr1   <- merge(get_cluster_regions(result_chi, n_clusters = 1, overlap = FALSE),
-               region_info, by = "region_id")
-cr2   <- merge(get_cluster_regions(result_chi, n_clusters = 2, overlap = TRUE),
-               region_info, by = "region_id")
-cr_it <- merge(get_cluster_regions(iter_chi, overlap = TRUE),
-               region_info, by = "region_id")
+cr1    <- merge(get_cluster_regions(result_chi, n_clusters = 1, overlap = FALSE),
+                region_info, by = "region_id")
+cr2    <- merge(get_cluster_regions(result_chi, n_clusters = 2, overlap = TRUE),
+                region_info, by = "region_id")
+cr_seq <- merge(get_cluster_regions(seq_chi, overlap = TRUE),
+                region_info, by = "region_id")
 
 
 ## ---- 7. Plot 1: Most likely cluster ----
@@ -164,27 +165,38 @@ ggsave("chicago_clusters_top2.png", p2, width = 14, height = 6, dpi = 300)
 cat("Saved: chicago_clusters_top2.png\n")
 
 
-## ---- 9. Plot 3 (optional): Iterative scan clusters ----
-n_iter <- iter_chi$n_iter
+## ---- 9. Plot 3: Sequential scan clusters ----
+n_iter <- seq_chi$n_iter
 if (n_iter > 0) {
-  chi_it <- merge(chicago_map, cr_it,
-                  by.x = "AREA_NUM", by.y = "area_number", all.x = TRUE)
-  palette_it <- c("#C44E52", "#4C72B0", "#55A868", "#8172B2", "#CCB974")[
+  # Cross-join the map polygons with every panel so all areas are drawn
+  # in each iteration (those outside the analysis dataset show up
+  # NA-coloured rather than as an extra empty "NA" panel).
+  panels <- unique(cr_seq$panel)
+  cr_seq_keys <- unique(cr_seq[, c("area_number", "cluster", "node_id",
+                                    "llr", "pvalue", "panel")])
+  chi_seq <- merge(
+    do.call(rbind,
+            lapply(panels, function(p) cbind(chicago_map, panel = p))),
+    cr_seq_keys,
+    by.x = c("AREA_NUM", "panel"), by.y = c("area_number", "panel"),
+    all.x = TRUE
+  )
+  palette_seq <- c("#C44E52", "#4C72B0", "#55A868", "#8172B2", "#CCB974")[
     seq_len(n_iter)
   ]
-  names(palette_it) <- as.character(seq_len(n_iter))
+  names(palette_seq) <- as.character(seq_len(n_iter))
 
-  n_sig <- sum(iter_chi$clusters$significant, na.rm = TRUE)
-  p_it <- ggplot(chi_it) +
+  n_sig <- sum(seq_chi$clusters$significant, na.rm = TRUE)
+  p_seq <- ggplot(chi_seq) +
     geom_sf(aes(fill = factor(cluster)), color = "gray40",
             linewidth = 0.12, alpha = 0.75) +
-    scale_fill_manual(values = palette_it, na.value = "gray95",
+    scale_fill_manual(values = palette_seq, na.value = "gray95",
                       name = "Iteration", na.translate = FALSE) +
     facet_wrap(~ panel, nrow = 1) +
-    labs(title    = paste0("Iterative Scan (extension): ", n_iter,
-                            " iterations, ", n_sig,
-                            " significant after Holm-Bonferroni"),
-         subtitle = "Each panel = one iteration (cases removed before next). NOT in paper.") +
+    labs(title    = paste0("Sequential Scan (Zhang et al. 2010): ",
+                            n_iter, " iterations, ",
+                            n_sig, " significant"),
+         subtitle = "Each panel = one iteration (regions removed before next).") +
     theme_minimal(base_size = 11) +
     theme(plot.title    = element_text(face = "bold"),
           plot.subtitle = element_text(color = "gray40"),
@@ -193,9 +205,9 @@ if (n_iter > 0) {
           axis.text     = element_text(color = "gray50", size = 7),
           legend.position = "none")
 
-  ggsave("chicago_clusters_iterative.png", p_it,
+  ggsave("chicago_clusters_sequential.png", p_seq,
          width = max(8, 4 * n_iter), height = 6, dpi = 300)
-  cat("Saved: chicago_clusters_iterative.png (", n_iter, " iterations)\n")
+  cat("Saved: chicago_clusters_sequential.png (", n_iter, " iterations)\n")
 }
 
 
@@ -210,7 +222,7 @@ cat("  RR:", round(mlc$rr, 2),
     "  LR:", round(mlc$llr, 2),
     "  p-value:", result_chi$pvalue, "\n")
 cat("\nDistinct clusters via filter_clusters:", nrow(fc), "\n")
-cat("Iterative scan: ", n_iter, " iterations, ",
-    sum(iter_chi$clusters$significant, na.rm = TRUE),
-    " significant after Holm-Bonferroni\n", sep = "")
+cat("Sequential scan (Zhang et al. 2010): ", n_iter, " iterations, ",
+    sum(seq_chi$clusters$significant, na.rm = TRUE),
+    " significant\n", sep = "")
 cat("\nDone!\n")

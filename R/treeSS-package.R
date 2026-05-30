@@ -24,7 +24,15 @@
 #'   \item{\code{\link{aggregate_tree}}}{Aggregates case counts from leaves to
 #'     internal nodes of the hierarchical tree.}
 #'   \item{\code{\link{filter_clusters}}}{Removes overlapping secondary
-#'     clusters from the tree-spatial scan output.}
+#'     clusters from a single-pass scan output (Cançado et al. 2025,
+#'     Sec. 5.1.1).}
+#'   \item{\code{\link{sequential_scan}}}{Sequential adjustment for secondary
+#'     clusters: removes the most likely cluster's regions and re-runs the
+#'     scan with a fresh Monte Carlo simulation (Zhang, Assunção &
+#'     Kulldorff 2010).}
+#'   \item{\code{\link{get_cluster_regions}}}{Returns a tidy
+#'     region-by-cluster data.frame suitable for plotting with any mapping
+#'     package.}
 #' }
 #'
 #' @references
@@ -38,6 +46,10 @@
 #' Kulldorff, M., Fang, Z., & Walsh, S. J. (2003). A tree-based scan
 #' statistic for database disease surveillance. \emph{Biometrics}, 59(2),
 #' 323–331.
+#'
+#' Zhang, Z., Assunção, R., & Kulldorff, M. (2010). Spatial scan statistics
+#' adjusted for multiple clusters. \emph{Journal of Probability and
+#' Statistics}, 2010, 642379.
 #'
 #' @docType package
 #' @name treeSS-package

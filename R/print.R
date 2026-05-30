@@ -270,3 +270,77 @@ summary.treespatial_scan <- function(object, ...) {
 
   invisible(object)
 }
+
+#' Print Method for sequential_scan Objects
+#'
+#' @param x An object of class \code{"sequential_scan"}.
+#' @param max_show Integer. Maximum number of region IDs (or leaf IDs,
+#'   for tree-only scans) to display in full per iteration before
+#'   truncating with \code{"... and N more"}. Default \code{10L}; set
+#'   \code{max_show = -1L} to print every value.
+#' @param ... Further arguments passed to or from other methods.
+#'
+#' @return Invisibly returns \code{x} (the input object of class
+#'   \code{"sequential_scan"}), unchanged. Called for the side effect
+#'   of printing a human-readable summary of the sequential scan
+#'   result to the console: the scan type, the buffer size, the
+#'   number of iterations performed, the significance threshold, the
+#'   number of significant clusters, and a per-iteration table of
+#'   detected clusters.
+#' @export
+print.sequential_scan <- function(x, max_show = 10L, ...) {
+  cat("Sequential Scan (Zhang, Assuncao & Kulldorff, 2010)\n")
+  cat(paste(rep("-", 55), collapse = ""), "\n")
+  cat("Scan type           :", x$scan_type, "\n")
+  cat("Buffer size         :", x$buffer_size,
+      "neighbouring region(s) per iteration\n")
+  cat("Iterations performed:", x$n_iter, "\n")
+  cat("Alpha               :", x$alpha, "\n")
+  cat("MC replications/iter:", x$nsim, "\n\n")
+
+  if (nrow(x$clusters) > 0L) {
+    n_sig <- sum(x$clusters$significant, na.rm = TRUE)
+    cat("Significant clusters: ", n_sig, " of ",
+        nrow(x$clusters), "\n\n", sep = "")
+    display <- x$clusters
+    # Hide list-columns from the tabular print
+    if (!isTRUE(max_show < 0L)) {
+      display$region_ids <- NULL
+      display$leaf_ids   <- NULL
+    }
+    print(display, row.names = FALSE)
+  } else {
+    cat("No clusters detected.\n")
+  }
+  invisible(x)
+}
+
+
+#' Summary Method for sequential_scan Objects
+#'
+#' @param object An object of class \code{"sequential_scan"}.
+#' @param ... Passed to \code{print.sequential_scan()}.
+#'
+#' @return Invisibly returns \code{object}. Called for the side effect
+#'   of printing the same fields as \code{print.sequential_scan()}
+#'   followed by, for each iteration, the cluster composition
+#'   (region IDs or leaf IDs).
+#' @export
+summary.sequential_scan <- function(object, ...) {
+  print.sequential_scan(object, ...)
+  if (nrow(object$clusters) > 0L) {
+    cat("\nCluster composition per iteration:\n")
+    cl <- object$clusters
+    for (k in seq_len(nrow(cl))) {
+      cat(sprintf("\n  Iteration %d:\n", cl$iteration[k]))
+      if ("region_ids" %in% names(cl)) {
+        .cat_wrapped("    Regions :", cl$region_ids[[k]])
+      }
+      if ("leaf_ids" %in% names(cl)) {
+        .cat_wrapped("    Leaves  :", cl$leaf_ids[[k]])
+      }
+    }
+  }
+  invisible(object)
+}
+

@@ -17,6 +17,7 @@
 #include <vector>
 #include <random>
 #include <cstdint>
+#include <algorithm>
 
 #ifdef _OPENMP
 #include <omp.h>
@@ -685,3 +686,4 @@ List mc_treescan_cpp(NumericVector node_cases,
     Named("sim_llr")     = sim_llr
   );
 }
+

@@ -4,12 +4,11 @@
 ## Reproduces Section 5.2 of:
 ##   Cancado et al. (2025). Environmental and Ecological Statistics, 32, 953-978.
 ##
-## Two analyses are shown:
-##   1. The PAPER-FAITHFUL multi-cluster procedure (Sec. 5.1.1):
-##      single scan + filter_clusters / get_cluster_regions(n_clusters = N).
-##   2. (Optional) iterative_scan with Holm-Bonferroni correction.
-##      This is NOT part of the paper - it is a Zhang/Assuncao/Kulldorff (2010)
-##      style conditional procedure, kept here as a useful extension.
+## Two secondary-cluster analyses are shown:
+##   1. The PAPER-FAITHFUL multi-cluster procedure (Cancado et al. 2025,
+##      Sec. 5.1.1): single scan + filter_clusters /
+##      get_cluster_regions(n_clusters = N).
+##   2. sequential_scan() -- Zhang, Assuncao & Kulldorff (2010).
 ##=============================================================================
 
 options(bitmapType = "cairo")     # robust PNG rendering on Linux servers
@@ -57,10 +56,9 @@ print(head(fc[, c("node_id", "n_regions", "cases", "expected", "llr", "pvalue")]
             5))
 
 
-## ---- 4. (Optional) Iterative scan with Holm-Bonferroni ----
-## NOT part of Cancado et al. (2025). p-values corrected for multiple testing.
-cat("\n=== Iterative scan (extension, with Holm-Bonferroni) ===\n")
-iter_rj <- iterative_scan(
+## ---- 4. Sequential scan (Zhang, Assuncao & Kulldorff, 2010) ----
+cat("\n=== Sequential scan (Zhang et al. 2010) ===\n")
+seq_rj <- sequential_scan(
   cases       = rj_mortality$cases,
   population  = rj_mortality$live_births,
   region_id   = rj_mortality$region_id,
@@ -72,7 +70,7 @@ iter_rj <- iterative_scan(
   nsim        = 999, seed = 2016,
   max_pop_pct = 0.50, n_cores = 4L
 )
-print(iter_rj)
+print(seq_rj)
 
 
 ## ---- 5. Polygons + cluster membership ----
@@ -82,12 +80,12 @@ mun$code6 <- as.integer(substr(mun$code_muni, 1, 6))
 
 region_info <- unique(rj_mortality[, c("region_id", "ibge_code", "name")])
 
-cr1   <- merge(get_cluster_regions(result_rj, n_clusters = 1, overlap = FALSE),
-               region_info, by = "region_id")
-cr2   <- merge(get_cluster_regions(result_rj, n_clusters = 2, overlap = TRUE),
-               region_info, by = "region_id")
-cr_it <- merge(get_cluster_regions(iter_rj, overlap = TRUE),
-               region_info, by = "region_id")
+cr1    <- merge(get_cluster_regions(result_rj, n_clusters = 1, overlap = FALSE),
+                region_info, by = "region_id")
+cr2    <- merge(get_cluster_regions(result_rj, n_clusters = 2, overlap = TRUE),
+                region_info, by = "region_id")
+cr_seq <- merge(get_cluster_regions(seq_rj, overlap = TRUE),
+                region_info, by = "region_id")
 
 
 ## ---- 6. Plot 1: Most likely cluster ----
@@ -145,26 +143,39 @@ ggsave("rj_clusters_top2.png", p2, width = 14, height = 6, dpi = 300)
 cat("Saved: rj_clusters_top2.png\n")
 
 
-## ---- 8. Plot 3 (optional): Iterative scan clusters ----
-n_iter <- iter_rj$n_iter
+## ---- 8. Plot 3: Sequential scan clusters ----
+n_iter <- seq_rj$n_iter
 if (n_iter > 0) {
-  mun_it <- merge(mun, cr_it, by.x = "code6", by.y = "ibge_code", all.x = TRUE)
-  palette_it <- c("#C44E52", "#4C72B0", "#55A868", "#8172B2", "#CCB974")[
+  # Cross-join the map polygons with the panels of the sequential scan,
+  # so that every municipality appears in every panel (those that are
+  # outside the dataset of 89 municipalities show up as NA-coloured).
+  panels <- unique(cr_seq$panel)
+  cr_seq_keys <- unique(cr_seq[, c("ibge_code", "cluster", "node_id",
+                                    "llr", "pvalue", "panel")])
+  mun_panels <- merge(
+    do.call(rbind,
+            lapply(panels, function(p) cbind(mun, panel = p))),
+    cr_seq_keys,
+    by.x = c("code6", "panel"), by.y = c("ibge_code", "panel"),
+    all.x = TRUE
+  )
+
+  palette_seq <- c("#C44E52", "#4C72B0", "#55A868", "#8172B2", "#CCB974")[
     seq_len(n_iter)
   ]
-  names(palette_it) <- as.character(seq_len(n_iter))
+  names(palette_seq) <- as.character(seq_len(n_iter))
 
-  n_sig <- sum(iter_rj$clusters$significant, na.rm = TRUE)
-  p_it <- ggplot(mun_it) +
+  n_sig <- sum(seq_rj$clusters$significant, na.rm = TRUE)
+  p_seq <- ggplot(mun_panels) +
     geom_sf(aes(fill = factor(cluster)), color = "gray40",
             linewidth = 0.12, alpha = 0.75) +
-    scale_fill_manual(values = palette_it, na.value = "gray95",
+    scale_fill_manual(values = palette_seq, na.value = "gray95",
                       name = "Iteration", na.translate = FALSE) +
     facet_wrap(~ panel, nrow = 1) +
-    labs(title    = paste0("Iterative Scan (extension): ", n_iter,
-                            " iterations, ", n_sig,
-                            " significant after Holm-Bonferroni"),
-         subtitle = "Each panel = one iteration (cases removed before next). NOT in paper.") +
+    labs(title    = paste0("Sequential Scan (Zhang et al. 2010): ",
+                            n_iter, " iterations, ",
+                            n_sig, " significant"),
+         subtitle = "Each panel = one iteration (regions removed before next).") +
     theme_minimal(base_size = 11) +
     theme(plot.title    = element_text(face = "bold"),
           plot.subtitle = element_text(color = "gray40"),
@@ -173,9 +184,9 @@ if (n_iter > 0) {
           axis.text     = element_text(color = "gray50", size = 7),
           legend.position = "none")
 
-  ggsave("rj_clusters_iterative.png", p_it,
+  ggsave("rj_clusters_sequential.png", p_seq,
          width = max(8, 4 * n_iter), height = 6, dpi = 300)
-  cat("Saved: rj_clusters_iterative.png (", n_iter, " iterations)\n")
+  cat("Saved: rj_clusters_sequential.png (", n_iter, " iterations)\n")
 }
 
 
@@ -188,7 +199,7 @@ cat("  Cases:", mlc$cases, "(expected", round(mlc$expected, 1), ")\n")
 cat("  Relative risk:", round(mlc$rr, 2), "\n")
 cat("  LR:", round(mlc$llr, 2), "  p-value:", result_rj$pvalue, "\n")
 cat("\nDistinct clusters via filter_clusters:", nrow(fc), "\n")
-cat("Iterative scan: ", n_iter, " iterations, ",
-    sum(iter_rj$clusters$significant, na.rm = TRUE),
-    " significant after Holm-Bonferroni\n", sep = "")
+cat("Sequential scan (Zhang et al. 2010): ", n_iter, " iterations, ",
+    sum(seq_rj$clusters$significant, na.rm = TRUE),
+    " significant\n", sep = "")
 cat("\nDone!\n")

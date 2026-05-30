@@ -1,3 +1,186 @@
+# treeSS 0.1.50 (2nd CRAN patch)
+
+Small adjustments to the DESCRIPTION file
+
+# treeSS 0.1.49
+
+Small adjustments to the vignettes
+
+# treeSS 0.1.48
+
+## Vignettes restructured
+
+The package now ships two vignettes:
+
+* `vignette("introduction", package = "treeSS")` — Rio de Janeiro
+  end-to-end, reproducing Section 5.2 of Cançado et al. (2025). This
+  was the previous `introduction` vignette, trimmed to RJ only.
+
+* `vignette("florida", package = "treeSS")` *(new)* — a pedagogical
+  walk-through of building the tree-spatial scan inputs from raw data
+  using the bundled `fl_deaths` dataset: building the ICD-10 tree
+  from the codes that actually appear in the data, downloading
+  county polygons + centroids from `tigris`, and assembling the
+  parallel-vector input contract that `treespatial_scan()` expects.
+
+The Chicago and London datasets, previously discussed inline in the
+`introduction` vignette, are now reserved for the companion software
+paper.
+
+
+# treeSS 0.1.47
+
+## Bug fix: spurious empty facet in sequential-scan map examples
+
+The four bundled plotting examples for `sequential_scan()`
+(`example_brazil_rj.R`, `example_chicago.R`, `example_florida.R`)
+previously did a left join from the full map polygon set onto the
+cluster table. When the shapefile contained polygons not present in
+the analysis dataset (3 RJ municipalities missing from the
+DATASUS/IBGE 89-municipality subset, for instance), those polygons
+emerged with `panel = NA`, which `facet_wrap` rendered as an extra
+empty panel labelled "NA".
+
+The examples now cross-join the polygon set with the panel labels
+first and then left-join the cluster information by `(id, panel)`,
+so every map polygon is drawn in every iteration panel — those that
+fall outside the analysis dataset get the `na.value` colour (a
+light grey), exactly as intended. No extra "NA" panel is produced.
+
+The `london` example uses `leaflet` rather than `facet_wrap` and was
+not affected.
+
+
+# treeSS 0.1.46
+
+## Removed: `multicluster_scan()`
+
+`multicluster_scan()` (added in 0.1.45 as an adaptation of Li, Wang,
+Yang, Li and Lai 2011 to the tree-spatial setting) has been removed.
+The function is gone, along with its C++ backend
+(`mc_multicluster_treespatial_cpp`, `mc_multicluster_spatial_cpp`),
+the `get_cluster_regions.multicluster_scan` S3 method, the
+corresponding `print` / `summary` methods, all examples, and the
+vignette subsection.
+
+Rationale:
+
+* On real datasets with a concentrated signal (e.g. infant mortality
+  in Rio de Janeiro: 622 tree nodes, 5358 zones), the top-K
+  candidate pool was dominated by overlapping variants of a single
+  geographic neighbourhood, so the fast top-K disjoint-pair search
+  could not find a valid pair. The full-pool rescue path was too
+  slow to be practical (timing out on `nsim = 999` with 4 cores).
+
+* The factorisation of the joint LLR used by Li et al. (2011) is
+  exact under the Poisson model for circular scans; its extension to
+  the tree-spatial setting was not formally established.
+
+* `filter_clusters()` (Cançado et al. 2025) and `sequential_scan()`
+  (Zhang, Assunção and Kulldorff 2010) together already cover the
+  practical secondary-cluster use cases with published, well-studied
+  statistical properties.
+
+Users who want joint-cluster detection in the circular case can use
+the original implementation from Li et al. (2011) outside this
+package.
+
+## Secondary-cluster methods after 0.1.46
+
+The package now offers two clearly-bounded approaches:
+
+* `filter_clusters()` — paper-faithful non-overlap criterion of
+  Cançado et al. (2025), Sec. 5.1.1, applied to the single-pass
+  candidate pool.
+
+* `sequential_scan()` — sequential adjustment of Zhang, Assunção and
+  Kulldorff (2010): detect MLC, remove its regions (with optional
+  buffer of nearest neighbours), re-run the scan on the reduced data
+  with a fresh Monte Carlo simulation; iterate until the current MLC
+  is no longer significant. Each iteration's p-value is correct under
+  the conditional argument in the paper, so no multiple-testing
+  correction is required.
+
+
+# treeSS 0.1.45
+
+## Secondary clusters: methods overhaul
+
+Replaced the ad-hoc Holm-Bonferroni `iterative_scan()` with two methods
+drawn directly from the published literature on multi-cluster spatial
+scan statistics, adapted to the tree-spatial setting. The package now
+offers three approaches to secondary-cluster detection, with the
+choice driven by which type of shadowing the user wants to remove:
+
+* `filter_clusters()` (unchanged) -- the original non-overlap
+  criterion of Cancado et al. (2025) Sec. 5.1.1, applied to the
+  single-pass candidate pool.
+
+* `sequential_scan()` (new) -- the sequential adjustment of Zhang,
+  Assuncao and Kulldorff (2010), adapted to tree-spatial / circular /
+  tree-only inputs. Detects the MLC, removes its regions (and an
+  optional `buffer_size` of nearest neighbours) from the dataset, and
+  re-runs the scan on the reduced data with a fresh Monte Carlo
+  simulation. Iterates until the MLC of the current reduced data is
+  no longer significant or `max_iter` is reached. Each iteration's
+  p-value is correct under the conditional argument of Section 3 of
+  the paper -- no post-hoc multiple-testing correction is applied or
+  required.
+
+* `multicluster_scan()` (new) -- the two-cluster joint statistic of
+  Li, Wang, Yang, Li and Lai (2011), adapted to tree-spatial and
+  circular scans. Builds the alternative as a joint presence of two
+  region-disjoint clusters; the joint LLR factorises into the sum of
+  the two single-cluster LLRs under Poisson, so the observed maximum
+  is found by sweeping the candidate pool. The Monte Carlo for the
+  joint statistic runs in C++ (new exports `mc_multicluster_treespatial_cpp`
+  and `mc_multicluster_spatial_cpp`) with the same OpenMP backend as
+  the other scans, so performance is on par with `treespatial_scan()`.
+  The decision rule of Table 2 of the paper is applied: 0, 1, or 2
+  significant clusters are reported based on the joint p-value and a
+  re-evaluation of the weaker cluster on the reduced dataset.
+
+## Removed
+
+* `iterative_scan()` and its print/summary/`get_cluster_regions`
+  methods have been removed. The Holm-Bonferroni "scan + zero cases +
+  re-scan" procedure is not part of the published methods we wanted to
+  offer; the sequential and multi-cluster scans above cover the
+  intended use cases and are grounded in the literature.
+
+* Internal helper `.matrix_to_vectors()` (previously used only by
+  `iterative_scan`) has been removed.
+
+## New S3 methods
+
+* `print.sequential_scan()`, `summary.sequential_scan()`
+* `print.multicluster_scan()`, `summary.multicluster_scan()`
+* `get_cluster_regions.sequential_scan()`,
+  `get_cluster_regions.multicluster_scan()`
+
+## Documentation
+
+* `filter_clusters()`, `treespatial_scan()`, and `circular_scan()`
+  cross-reference the new methods in `@seealso`.
+* The introduction vignette now closes with a section showing all
+  three secondary-cluster approaches side by side.
+* The four worked examples under `inst/examples/` (Brazil/RJ,
+  Chicago, Florida, London) use `sequential_scan()` in place of the
+  removed `iterative_scan()` block.
+
+## Tests
+
+* New `tests/testthat/test-sequential-scan.R` covering structure,
+  the `max_iter` stopping rule, the buffer mechanism, behaviour
+  under H0, and printing.
+* New `tests/testthat/test-multicluster-scan.R` covering structure,
+  the stronger-versus-weaker ordering, region disjointness of the
+  returned pair, the significance decision rule, and printing.
+* `tests/testthat/test-get-cluster-regions.R` and
+  `tests/testthat/test-binomial.R` updated to drop their references
+  to `iterative_scan()`.
+
+
 # treeSS 0.1.44
 
 ## CRAN reviewer feedback

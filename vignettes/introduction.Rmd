@@ -1,8 +1,8 @@
 ---
-title: "Introduction to treeSS"
+title: "Introduction to treeSS: reproducing Cançado et al. (2025)"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Introduction to treeSS}
+  %\VignetteIndexEntry{Introduction to treeSS: reproducing Cançado et al. (2025)}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -29,7 +29,7 @@ where the events to be clustered (deaths, hospitalisations, crimes,
 collisions) carry both a *location* and a *categorical hierarchy*
 (ICD-10 chapter $\to$ subchapter $\to$ leaf, NAICS sector, road type,
 etc.). Detecting clusters jointly in both dimensions can identify
-specific cause-area combinations that pure spatial or pure tree scans
+specific cause–area combinations that pure spatial or pure tree scans
 would miss.
 
 The package provides:
@@ -39,13 +39,14 @@ The package provides:
 | `treespatial_scan()` | Tree-spatial scan (main entry point) |
 | `circular_scan()`    | Kulldorff's circular spatial scan (tree-free) |
 | `tree_scan()`        | Tree-based scan (space-free) |
-| `iterative_scan()`   | Sequential conditional scan with Holm–Bonferroni correction |
 | `filter_clusters()`  | Distinct secondary clusters per Cançado et al. (2025), Sec. 5.1.1 |
+| `sequential_scan()`  | Sequential adjustment of Zhang, Assunção & Kulldorff (2010) |
 | `get_cluster_regions()` | Tidy region-by-cluster table for plotting |
 | `aggregate_tree()`   | Roll counts up the tree |
 
-All scans accept the Poisson and Binomial models of the original paper
-and run the Monte Carlo step under OpenMP via the `n_cores` argument.
+All scans accept the Poisson and Binomial models of the original
+paper and run the Monte Carlo step under OpenMP via the `n_cores`
+argument.
 
 The package ships four example datasets:
 
@@ -56,21 +57,23 @@ The package ships four example datasets:
 | `fl_deaths` | USA | Public health | 65 counties | (built by user from raw data) |
 | `london_collisions` + `london_tree` | UK | Road safety | 33 boroughs | Light × Road × Junction (81 nodes) |
 
-This vignette walks through `rj_mortality` (reproducing the published
-analysis) and `chicago_crimes` (a different-domain illustration), then
-shows how to use `iterative_scan()` for sequential cluster detection.
-The Florida and London examples are shipped in `inst/examples/` and
-discussed in the companion paper.
+This vignette walks through `rj_mortality` end-to-end, reproducing
+the published analysis of Cançado et al. (2025). A companion vignette,
+`vignette("florida", package = "treeSS")`, is pedagogical: it builds
+the inputs from raw long-form data and the ICD-10 tree from the codes
+that actually appear in the data. The Chicago and London datasets are
+worked out in the companion software paper.
 
 ---
 
-## Example 1 — Infant mortality in Rio de Janeiro
+## Infant mortality in Rio de Janeiro
 
-This reproduces Section 5.2 of Cançado et al. (2025): all live births
+We reproduce Section 5.2 of Cançado et al. (2025): all live births
 and infant deaths in the 89 municipalities of Rio de Janeiro state in
 2016, classified by the ICD-10 hierarchy. The pre-built dataset
 combines deaths, live births, ICD-10 leaf codes and centroid
-coordinates in long format.
+coordinates in long format — exactly the parallel-vector input
+contract that **treeSS** expects.
 
 ### Run the scan
 
@@ -79,10 +82,18 @@ library(treeSS)
 data(rj_mortality)
 data(rj_tree)
 
-str(rj_mortality, max = 1)
-#> 'data.frame': 1440 obs. of 9 variables: region_id, ibge_code,
-#>   name, live_births, x, y, node_id, cases, ...
+c(rows           = nrow(rj_mortality),
+  municipalities = length(unique(rj_mortality$region_id)),
+  tree_nodes     = nrow(rj_tree),
+  total_deaths   = sum(rj_mortality$cases),
+  total_births   = sum(unique(
+    rj_mortality[, c("region_id", "live_births")]
+  )$live_births))
+#> rows           municipalities  tree_nodes  total_deaths  total_births
+#> 1440           89              622         2981          219124
 ```
+
+The scan is one function call:
 
 ```{r rj-scan}
 result_rj <- treespatial_scan(
@@ -100,32 +111,83 @@ result_rj <- treespatial_scan(
 print(result_rj)
 ```
 
-Running this produces the most likely cluster `P209` with 18
-municipalities, log-likelihood ratio $LR \approx 38.83$, $p < 0.001$,
-27 observed deaths against 3.34 expected — closely matching the
-published Table 7 ($LR = 38.48$, 18 municipalities, 27 deaths,
-3.37 expected). The minor LR difference comes from a SIM database
-update between the paper's analysis and the dataset shipped here;
-the conclusions are identical.
+The most likely cluster is the ICD-10 leaf code **P209** ("unspecified
+intrauterine hypoxia") concentrated in 18 municipalities of the north
+fluminense region. Twenty-seven deaths are observed against an
+expectation of 3.34 under uniform risk — a relative risk of $\sim 8$
+— with a Monte Carlo $p$-value of $1/(\text{nsim} + 1) = 0.001$.
+
+This closely matches Table 7 of Cançado et al. (2025): the same 18
+municipalities (by IBGE code), 27 observed deaths, expected $\approx
+3.37$, log-likelihood ratio $LR = 38.48$ (we obtain $\approx 38.83$).
+The minor LR discrepancy is explained by a SIM database update
+between the paper's analysis and the version shipped here, and by the
+discontinuation of TCU population estimates after 2017; the
+conclusions are identical.
+
+### Why the joint scan matters here
+
+To make the value of the joint search concrete, it is worth running
+the two simpler scans on exactly the same data. The purely *spatial*
+scan, ignoring the tree, returns a single 8-municipality cluster
+around greater Rio de Janeiro driven by the aggregate death count
+(Cançado et al. 2025, Table 5); the P209 cluster in the north of the
+state does not appear at all, because aggregating over all causes
+dilutes the cause-specific signal. We can verify this directly by
+aggregating to one row per municipality and running the circular scan
+on the totals:
+
+```{r rj-spatial-only}
+rj_agg <- unique(rj_mortality[, c("region_id", "x", "y", "live_births")])
+rj_agg$cases <- tapply(rj_mortality$cases,
+                        rj_mortality$region_id,
+                        sum)[as.character(rj_agg$region_id)]
+
+result_spatial <- circular_scan(
+  cases       = rj_agg$cases,
+  population  = rj_agg$live_births,
+  region_id   = rj_agg$region_id,
+  x           = rj_agg$x,
+  y           = rj_agg$y,
+  max_pop_pct = 0.50,
+  nsim        = 999, seed = 2016
+)
+result_spatial$most_likely_cluster$region_ids
+```
+
+Conversely, the purely *tree-based* scan, ignoring geography, returns
+more than fifty significant cuts at the 5 % level on this dataset
+(Cançado et al. 2025, Table 6); the analyst is then left to apply a
+multiple-testing correction across tree branches and decide which to
+follow up. The joint scan returns a *single* most-likely $(z, g)$
+pair with one Monte Carlo $p$-value — the family-wise error rate is
+already controlled by the joint maximisation.
 
 ### Multiple distinct clusters (paper-faithful)
 
-To extract more than one cluster from a single scan, the paper's
-Section 5.1.1 specifies a filtering rule: a candidate (zone, branch)
-pair is retained only if its branch is disjoint from every previously
-retained branch (no ancestor/descendant relation), or its zone is
-disjoint from every previously retained zone (no region in common).
-This is implemented in `filter_clusters()`:
+The paper's Section 5.1.1 specifies a filtering rule: a candidate
+(zone, branch) pair is retained only if its branch is disjoint from
+every previously retained branch (no ancestor/descendant relation),
+*or* its zone is disjoint from every previously retained zone (no
+region in common). This is implemented in `filter_clusters()`:
 
 ```{r rj-filter}
-filter_clusters(result_rj)[1:5, c("node_id", "n_regions",
-                                   "cases", "expected", "llr")]
+filter_clusters(result_rj)[1:5,
+                            c("node_id", "n_regions",
+                              "cases", "expected", "llr")]
 ```
 
-For visualisation, `get_cluster_regions()` returns a tidy data.frame
-ready to merge with a polygon layer:
+No additional Monte Carlo simulation is performed; the secondary
+clusters are read directly from `result_rj$secondary_clusters` and
+filtered for distinctness in $O(k^2)$ time. The top filtered
+candidates correspond to the rows of Table 7 of Cançado et al. (2025).
 
-```{r rj-getregions, eval = FALSE}
+### Visualising the cluster
+
+`get_cluster_regions()` returns a tidy data.frame ready to merge with
+any polygon layer:
+
+```{r rj-getregions}
 # Most likely cluster only (single map)
 cr1 <- get_cluster_regions(result_rj, n_clusters = 1, overlap = FALSE)
 
@@ -133,23 +195,26 @@ cr1 <- get_cluster_regions(result_rj, n_clusters = 1, overlap = FALSE)
 cr2 <- get_cluster_regions(result_rj, n_clusters = 2, overlap = TRUE)
 ```
 
-A complete plotting workflow with `geobr` and `ggplot2`:
+The package does not ship `sf` polygons for Rio de Janeiro — they are
+easy to fetch on demand from \CRANpkg{geobr}:
 
 ```{r rj-plot}
 library(ggplot2)
 library(geobr)
 library(sf)
 
-mun <- read_municipality(code_muni = "RJ", year = 2016)
+mun       <- read_municipality(code_muni = "RJ", year = 2016)
 mun$code6 <- as.integer(substr(mun$code_muni, 1, 6))
 
-cr2 <- merge(get_cluster_regions(result_rj, n_clusters = 2, overlap = TRUE),
+cr2 <- merge(get_cluster_regions(result_rj, n_clusters = 2,
+                                  overlap = TRUE),
              unique(rj_mortality[, c("region_id", "ibge_code")]),
              by = "region_id")
 mun_facet <- merge(mun, cr2, by.x = "code6", by.y = "ibge_code")
 
 ggplot(mun_facet) +
-  geom_sf(aes(fill = factor(cluster)), color = "gray40", alpha = 0.75) +
+  geom_sf(aes(fill = factor(cluster)), color = "gray40",
+          alpha = 0.75) +
   scale_fill_manual(values = c("1" = "#C44E52", "2" = "#4C72B0"),
                     na.value = "gray95", na.translate = FALSE) +
   facet_wrap(~ panel, nrow = 1) +
@@ -157,109 +222,34 @@ ggplot(mun_facet) +
   theme(legend.position = "none")
 ```
 
-A complete worked example with detailed annotation is shipped at
+A complete annotated worked example, including the polygon download
+and faceted plots for both `filter_clusters()` and `sequential_scan()`
+results, is shipped at
 `system.file("examples", "example_brazil_rj.R", package = "treeSS")`.
 
 ---
 
-## Example 2 — Crime in Chicago
+## Secondary clusters when the MLC shadows weaker ones
 
-The Chicago dataset illustrates the package on a non-medical domain
-with a much larger tree (2841 nodes covering crime type, description
-and location). It also demonstrates a recurring choice users face
-in surveillance applications: **which population should be the
-denominator?**
+`filter_clusters()` extracts distinct clusters from a *single* run of
+the scan. It is fast (no additional Monte Carlo) and faithful to the
+paper. When the most likely cluster is overwhelmingly strong, however,
+it can *shadow* weaker secondary clusters: the excess cases inside the
+MLC inflate the expected counts everywhere else, weakening the
+likelihood ratios of any other genuine cluster on the same dataset.
 
-`chicago_crimes` ships with two denominator columns:
+For that situation the package also offers `sequential_scan()`,
+adapted from Zhang, Assunção and Kulldorff (2010). It detects the MLC,
+removes the MLC's regions (optionally with a buffer of nearest
+neighbours) from the dataset, and re-runs the scan on the reduced
+data with a *fresh* Monte Carlo simulation. The procedure iterates
+until the current MLC is no longer significant at the user-specified
+$\alpha$ level. Because each iteration's $p$-value is computed against
+the simulated null distribution of the *current* (reduced) dataset, no
+multiple-testing correction is required.
 
-  * `population` — the total incidents in each community area. This
-    is a *compositional* denominator: it expresses each cell as a
-    share of the citywide incident count and answers the question
-    *"which crime types over-occur in which areas, relative to the
-    citywide profile?"*
-  * `pop_residential` — the residential population of each community
-    area (ACS 2020 5-year, aggregated to community areas by CMAP
-    Community Data Snapshots). This is the appropriate denominator
-    for an *incidence-rate* analysis (incidents per resident),
-    analogous to deaths per live birth in Example 1.
-
-The choice changes both the model and the interpretation. We use the
-incidence-rate denominator below.
-
-### Run the scan
-
-```{r chi-scan}
-data(chicago_crimes)
-data(chicago_tree)
-
-result_chi <- treespatial_scan(
-  cases       = chicago_crimes$cases,
-  population  = chicago_crimes$pop_residential,
-  region_id   = chicago_crimes$region_id,
-  x           = chicago_crimes$x,
-  y           = chicago_crimes$y,
-  node_id     = chicago_crimes$node_id,
-  tree        = chicago_tree,
-  max_pop_pct = 0.25,
-  nsim        = 999, seed = 2023,
-  n_cores     = 4L
-)
-print(result_chi)
-```
-
-The most likely cluster covers a contiguous group of community areas
-on Chicago's South Side (Englewood, West Englewood, Auburn Gresham,
-Roseland and neighbouring CCAs), driven by an over-occurrence of
-violent and property crimes against residents. The relative risk for
-this cluster is approximately 1.58 — a 58 % excess over the citywide
-rate.
-
-### Visualise the most likely cluster
-
-`chicago_crimes` joins to the bundled `chicago_map` polygon layer via
-the `area_number` column:
-
-```{r chi-plot}
-data(chicago_map)
-
-cr1 <- merge(get_cluster_regions(result_chi, n_clusters = 1, overlap = FALSE),
-             unique(chicago_crimes[, c("region_id", "area_number", "name")]),
-             by = "region_id")
-chi <- merge(chicago_map, cr1, by.x = "AREA_NUM", by.y = "area_number",
-              all.x = TRUE)
-
-ggplot(chi) +
-  geom_sf(aes(fill = factor(cluster)), color = "gray40", alpha = 0.75) +
-  scale_fill_manual(values = c("1" = "#C44E52"), na.value = "gray95",
-                    name = "Cluster") +
-  theme_minimal()
-```
-
----
-
-## Multi-cluster detection: `iterative_scan()`
-
-`filter_clusters()` (used in Example 1) returns distinct clusters
-extracted from a *single* run of the scan. An alternative — popular
-in the spatial-epidemiology literature since Zhang, Assunção and
-Kulldorff (2010) — is to run the scan, remove the cases assigned to
-the detected cluster, and re-run on the residual data. Repeating this
-yields a sequence of clusters whose subsequent components are
-*conditionally most likely*, given that the prior clusters have been
-explained away.
-
-The function `iterative_scan()` implements this procedure. **Note that
-it is not part of Cançado et al. (2025);** users seeking strict
-fidelity to that paper should use `filter_clusters()`. The iterative
-procedure is offered as a useful extension and is documented as such.
-
-Because each iteration is a separate hypothesis test on data modified
-by the previous iteration, the raw p-values overstate significance.
-`iterative_scan()` collects the raw p-values from all iterations and
-applies the Holm–Bonferroni correction at the end:
-
-```{r rj-iter}
-iter_rj <- iterative_scan(
+```{r rj-seq}
+seq_rj <- sequential_scan(
   cases       = rj_mortality$cases,
   population  = rj_mortality$live_births,
   region_id   = rj_mortality$region_id,
@@ -267,86 +257,66 @@ iter_rj <- iterative_scan(
   y           = rj_mortality$y,
   node_id     = rj_mortality$node_id,
   tree        = rj_tree,
-  max_iter    = 5, alpha = 0.05,
+  max_iter    = 5L, alpha = 0.05,
   nsim        = 999, seed = 2016,
   max_pop_pct = 0.50, n_cores = 4L
 )
-print(iter_rj)
+print(seq_rj)
 ```
 
-The returned `clusters` data.frame has one row per iteration with the
-raw p-value, the Holm-adjusted p-value, and a `significant` flag:
+The `clusters` data.frame has one row per iteration with the cluster
+identifier, log-likelihood ratio, fresh $p$-value, and a logical
+`significant` flag:
 
-```{r rj-iter-table}
-iter_rj$clusters[, c("iteration", "node_id", "n_regions",
-                      "llr", "pvalue", "pvalue_adjusted",
-                      "significant")]
+```{r rj-seq-table}
+seq_rj$clusters[, c("iteration", "node_id", "n_regions",
+                    "llr", "pvalue", "significant")]
 ```
 
-Mapping the iterative result uses the same S3 dispatch:
+Mapping the sequential result uses the same `get_cluster_regions()`
+generic. The complete plotting workflow is shipped in the same
+annotated example file.
 
-```{r rj-iter-map}
-cr_it <- merge(get_cluster_regions(iter_rj, overlap = TRUE),
-               unique(rj_mortality[, c("region_id", "ibge_code")]),
-               by = "region_id")
-mun_it <- merge(mun, cr_it, by.x = "code6", by.y = "ibge_code",
-                all.x = TRUE)
+---
 
-ggplot(mun_it) +
-  geom_sf(aes(fill = factor(cluster)), color = "gray40", alpha = 0.75) +
-  scale_fill_manual(values = c("1" = "#C44E52", "2" = "#4C72B0",
-                                "3" = "#55A868", "4" = "#8172B2",
-                                "5" = "#CCB974"),
-                    na.value = "gray95", na.translate = FALSE) +
-  facet_wrap(~ panel) +
-  theme_minimal() + theme(legend.position = "none")
-```
+## When to use which
 
-When to use which:
+  * Use `filter_clusters()` when you want to follow Cançado et al.
+    (2025) exactly: one scan, then a non-overlap pass over the
+    candidate pool. No extra computation.
+  * Use `sequential_scan()` when the MLC may be hiding weaker
+    secondary clusters that `filter_clusters()` cannot detect on the
+    original (unreduced) data.
 
-  * Use `filter_clusters()` / `get_cluster_regions(n_clusters = N)`
-    when you want to follow Cançado et al. (2025) exactly.
-  * Use `iterative_scan()` when residual clustering is plausible and
-    you want a sequence of conditionally distinct clusters with
-    proper multiple-testing control.
+The two answer different questions and are complementary; both are
+appropriate in different applied scenarios.
 
 ---
 
 ## Computational notes
 
-The Monte Carlo step (replicates of the null Poisson/Binomial counts
-under proportional intensities) dominates the runtime. All scan
-functions accept `n_cores`, which parallelises the Monte Carlo step
-via OpenMP. On a 4-core laptop the Rio de Janeiro analysis runs in
-under 20 seconds with `nsim = 999`; the Chicago analysis (much larger
-tree) takes around two minutes.
+`treespatial_scan()` and `sequential_scan()` both accept `n_cores`,
+which distributes the Monte Carlo step across OpenMP threads in C++.
+Each thread carries its own `std::mt19937` generator seeded
+deterministically from the user-supplied `seed`, so the result is
+reproducible for any fixed pair `(seed, n_cores)`. The serial path
+(`n_cores = 1L`) uses R's `rmultinom` and is bit-identical to the
+pre-OpenMP implementation.
 
-For tasks where the case counts are concentrated near the leaves and
-the tree is deep, `aggregate_tree()` can be used to compute the
-internal-node sums once and reuse them across calls.
+For publication-critical work where simulated $p$-values must be
+bit-identical between machines, use `n_cores = 1L`. For exploratory
+work, `n_cores = 4` typically yields a 4–6× speed-up.
 
 ---
 
-## Other examples
+## Other examples shipped with the package
 
-The `inst/examples/` directory of the installed package contains
-fully annotated worked examples for all four datasets:
-
-```{r examples-dir}
-list.files(system.file("examples", package = "treeSS"))
-#> [1] "example_brazil_rj.R"  "example_chicago.R"
-#> [2] "example_florida.R"    "example_london.R"
-```
-
-The Florida script demonstrates the full workflow from raw long
-data — building the ICD-10 tree from scratch, downloading county
-polygons via `tigris`, assembling parallel input vectors and
-plotting with `ggplot2`. The London script illustrates the use of
-a non-medical tree (light × road × junction) on traffic collisions,
-with an interactive `leaflet` map.
-
-These two examples are also the basis of the detailed use cases in
-the companion R Journal paper.
+| File | Purpose |
+|:-----|:--------|
+| `inst/examples/example_brazil_rj.R` | Full plotting workflow for the RJ analysis (this vignette) |
+| `inst/examples/example_florida.R` | Building the input from raw long-form data — see `vignette("florida")` |
+| `inst/examples/example_chicago.R` | Crime in Chicago, 2023 (discussed in the companion paper) |
+| `inst/examples/example_london.R` | Road collisions in London, 2022 (discussed in the companion paper) |
 
 ---
 
@@ -367,6 +337,3 @@ statistic for database disease surveillance. *Biometrics*, 59(2),
 Zhang, Z., Assunção, R., & Kulldorff, M. (2010). Spatial scan
 statistics adjusted for multiple clusters. *Journal of Probability
 and Statistics*, 2010, 642379.
-
-Holm, S. (1979). A simple sequentially rejective multiple test
-procedure. *Scandinavian Journal of Statistics*, 6(2), 65–70.

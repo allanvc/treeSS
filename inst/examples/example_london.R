@@ -1,10 +1,11 @@
 ##=============================================================================
 ## Example 3: Road Traffic Collisions in London, UK (2022)
 ##
-## Two analyses:
-##   1. PAPER-FAITHFUL multi-cluster procedure (Cancado et al. 2025, Sec. 5.1.1):
-##      single scan + filter_clusters / get_cluster_regions(n_clusters = N).
-##   2. (Optional) iterative_scan with Holm-Bonferroni - NOT in paper.
+## Two secondary-cluster analyses are shown:
+##   1. PAPER-FAITHFUL multi-cluster procedure (Cancado et al. 2025,
+##      Sec. 5.1.1): single scan + filter_clusters /
+##      get_cluster_regions(n_clusters = N).
+##   2. sequential_scan() -- Zhang, Assuncao & Kulldorff (2010).
 ##
 ## Maps: leaflet (interactive, HTML)
 ## Polygons: london_boroughs_map (included in the package)
@@ -55,9 +56,9 @@ print(head(fc[, c("node_id", "n_regions", "cases", "expected", "llr", "pvalue")]
             5))
 
 
-## ---- 4. (Optional) Iterative scan with Holm-Bonferroni ----
-cat("\n=== Iterative scan (extension, with Holm-Bonferroni) ===\n")
-iter_ldn <- iterative_scan(
+## ---- 4. Sequential scan (Zhang, Assuncao & Kulldorff, 2010) ----
+cat("\n=== Sequential scan (Zhang et al. 2010) ===\n")
+seq_ldn <- sequential_scan(
   cases       = london_collisions$cases,
   population  = london_collisions$population,
   region_id   = london_collisions$region_id,
@@ -69,18 +70,18 @@ iter_ldn <- iterative_scan(
   nsim        = 999, seed = 42,
   max_pop_pct = 0.25, n_cores = 4L
 )
-print(iter_ldn)
+print(seq_ldn)
 
 
 ## ---- 5. Cluster membership + descriptive lookup ----
 region_info <- unique(london_collisions[, c("region_id", "borough")])
 
-cr1   <- merge(get_cluster_regions(result_ldn, n_clusters = 1, overlap = FALSE),
-               region_info, by = "region_id")
-cr2   <- merge(get_cluster_regions(result_ldn, n_clusters = 2, overlap = TRUE),
-               region_info, by = "region_id")
-cr_it <- merge(get_cluster_regions(iter_ldn, overlap = TRUE),
-               region_info, by = "region_id")
+cr1    <- merge(get_cluster_regions(result_ldn, n_clusters = 1, overlap = FALSE),
+                region_info, by = "region_id")
+cr2    <- merge(get_cluster_regions(result_ldn, n_clusters = 2, overlap = TRUE),
+                region_info, by = "region_id")
+cr_seq <- merge(get_cluster_regions(seq_ldn, overlap = TRUE),
+                region_info, by = "region_id")
 
 JOIN_X <- "NAME"     # column in london_boroughs_map
 JOIN_Y <- "borough"  # column in cluster results
@@ -173,35 +174,35 @@ saveWidget(map2, "london_clusters_top2.html", selfcontained = TRUE)
 cat("Saved: london_clusters_top2.html\n")
 
 
-## ---- 8. Map 3 (optional): Iterative scan clusters ----
-n_iter <- iter_ldn$n_iter
+## ---- 8. Map 3: Sequential scan clusters ----
+n_iter <- seq_ldn$n_iter
 if (n_iter > 0) {
-  cr_it_first <- cr_it[order(cr_it$cluster), ]
-  cr_it_first <- cr_it_first[!duplicated(cr_it_first$borough), ]
+  cr_seq_first <- cr_seq[order(cr_seq$cluster), ]
+  cr_seq_first <- cr_seq_first[!duplicated(cr_seq_first$borough), ]
 
-  ldn_it <- merge(london_boroughs_map, cr_it_first,
-                  by.x = JOIN_X, by.y = JOIN_Y, all.x = TRUE)
+  ldn_seq <- merge(london_boroughs_map, cr_seq_first,
+                   by.x = JOIN_X, by.y = JOIN_Y, all.x = TRUE)
 
-  palette_it <- c("#C44E52", "#4C72B0", "#55A868", "#8172B2", "#CCB974")[
+  palette_seq <- c("#C44E52", "#4C72B0", "#55A868", "#8172B2", "#CCB974")[
     seq_len(n_iter)
   ]
-  names(palette_it) <- as.character(seq_len(n_iter))
+  names(palette_seq) <- as.character(seq_len(n_iter))
 
-  n_sig <- sum(iter_ldn$clusters$significant, na.rm = TRUE)
-  ldn_it$fillc <- ifelse(is.na(ldn_it$cluster), "#E8E8E8",
-                          palette_it[as.character(ldn_it$cluster)])
-  ldn_it$label <- ifelse(
-    is.na(ldn_it$cluster),
-    paste0("<b>", ldn_it$NAME, "</b><br>Not detected"),
-    paste0("<b>", ldn_it$NAME, "</b><br>",
-           "Iteration ", ldn_it$cluster, ": ",
-           "<span style='color:", palette_it[as.character(ldn_it$cluster)],
-           "'><b>", ldn_it$node_id, "</b></span><br>",
-           "LR: ", round(ldn_it$llr, 1),
-           " | adj p = ", round(ldn_it$pvalue_adjusted, 3))
+  n_sig <- sum(seq_ldn$clusters$significant, na.rm = TRUE)
+  ldn_seq$fillc <- ifelse(is.na(ldn_seq$cluster), "#E8E8E8",
+                          palette_seq[as.character(ldn_seq$cluster)])
+  ldn_seq$label <- ifelse(
+    is.na(ldn_seq$cluster),
+    paste0("<b>", ldn_seq$NAME, "</b><br>Not detected"),
+    paste0("<b>", ldn_seq$NAME, "</b><br>",
+           "Iteration ", ldn_seq$cluster, ": ",
+           "<span style='color:", palette_seq[as.character(ldn_seq$cluster)],
+           "'><b>", ldn_seq$node_id, "</b></span><br>",
+           "LR: ", round(ldn_seq$llr, 1),
+           " | p = ", round(ldn_seq$pvalue, 3))
   )
 
-  map_it <- leaflet(ldn_it) %>%
+  map_seq <- leaflet(ldn_seq) %>%
     addProviderTiles(providers$CartoDB.Positron) %>%
     addPolygons(
       fillColor   = ~fillc,
@@ -212,16 +213,16 @@ if (n_iter > 0) {
     setView(lng = -0.12, lat = 51.5, zoom = 10) %>%
     addLegend(
       position = "bottomright",
-      colors   = c(palette_it, "#E8E8E8"),
+      colors   = c(palette_seq, "#E8E8E8"),
       labels   = c(paste0("Iteration ", seq_len(n_iter)), "Other"),
-      title    = paste0("Iterative scan (extension)<br>",
-                        n_sig, " of ", n_iter,
-                        " significant (Holm-Bonferroni)"),
+      title    = paste0("Sequential scan (Zhang et al. 2010)<br>",
+                        n_sig, " of ", n_iter, " significant"),
       opacity  = 0.8
     )
 
-  saveWidget(map_it, "london_clusters_iterative.html", selfcontained = TRUE)
-  cat("Saved: london_clusters_iterative.html\n")
+  saveWidget(map_seq, "london_clusters_sequential.html",
+             selfcontained = TRUE)
+  cat("Saved: london_clusters_sequential.html\n")
 }
 
 
@@ -235,7 +236,7 @@ cat("  RR:", round(mlc$rr, 2),
     "  LR:", round(mlc$llr, 2),
     "  p-value:", result_ldn$pvalue, "\n")
 cat("\nDistinct clusters via filter_clusters:", nrow(fc), "\n")
-cat("Iterative scan: ", n_iter, " iterations, ",
-    sum(iter_ldn$clusters$significant, na.rm = TRUE),
-    " significant after Holm-Bonferroni\n", sep = "")
+cat("Sequential scan (Zhang et al. 2010): ", n_iter, " iterations, ",
+    sum(seq_ldn$clusters$significant, na.rm = TRUE),
+    " significant\n", sep = "")
 cat("\nDone!\n")

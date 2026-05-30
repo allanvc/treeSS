@@ -124,5 +124,5 @@ Statistics}, 32, 953--978. \doi{10.1007/s10651-025-00670-w}
 \seealso{
 \code{\link{circular_scan}}, \code{\link{tree_scan}},
   \code{\link{aggregate_tree}}, \code{\link{filter_clusters}},
-  \code{\link{get_cluster_regions}}, \code{\link{iterative_scan}}
+  \code{\link{get_cluster_regions}}, \code{\link{sequential_scan}}
 }

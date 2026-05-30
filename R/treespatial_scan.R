@@ -59,7 +59,7 @@
 #'
 #' @seealso \code{\link{circular_scan}}, \code{\link{tree_scan}},
 #'   \code{\link{aggregate_tree}}, \code{\link{filter_clusters}},
-#'   \code{\link{get_cluster_regions}}, \code{\link{iterative_scan}}
+#'   \code{\link{get_cluster_regions}}, \code{\link{sequential_scan}}
 #'
 #' @export
 #' @examples

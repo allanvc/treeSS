@@ -3,24 +3,26 @@
 \name{get_cluster_regions}
 \alias{get_cluster_regions}
 \alias{get_cluster_regions.default}
-\alias{get_cluster_regions.iterative_scan}
+\alias{get_cluster_regions.sequential_scan}
 \title{Extract Cluster Membership for Each Region}
 \usage{
 get_cluster_regions(result, n_clusters = 1L, overlap = TRUE, ...)
 
 \method{get_cluster_regions}{default}(result, n_clusters = 1L, overlap = TRUE, ...)
 
-\method{get_cluster_regions}{iterative_scan}(result, n_clusters = 1L, overlap = TRUE, ...)
+\method{get_cluster_regions}{sequential_scan}(result, n_clusters = 1L, overlap = TRUE, ...)
 }
 \arguments{
-\item{result}{Either a \code{"treespatial_scan"}/\code{"circular_scan"}
-object (single-pass scan) or an \code{"iterative_scan"} object.}
+\item{result}{A \code{"treespatial_scan"} or \code{"circular_scan"}
+object (single-pass scan), or a \code{"sequential_scan"} object
+(Zhang, Assuncao and Kulldorff, 2010).}
 
 \item{n_clusters}{Integer. (Single-pass methods only.) Number of
 clusters to extract. \code{1} returns only the most likely cluster.
 Values greater than 1 use \code{\link{filter_clusters}} internally
 to identify distinct secondary clusters. Default is \code{1}.
-Ignored for iterative-scan inputs (every iteration is returned).}
+Ignored for sequential scan inputs (all detected iterations are
+returned).}
 
 \item{overlap}{Logical. If \code{TRUE} (default), returns a facet-ready
 data.frame: all regions are replicated for each cluster panel, with a
@@ -39,28 +41,25 @@ A \code{data.frame} with columns from \code{result$regions} plus:
     \item{node_id}{The tree node of the cluster, or \code{NA}.}
     \item{llr}{The log-likelihood ratio of the cluster, or \code{NA}.}
     \item{pvalue}{The p-value of the cluster, or \code{NA}.}
-    \item{pvalue_adjusted, significant}{(Iterative method only) The
-      Holm-Bonferroni adjusted p-value and corresponding significance
-      flag for the iteration.}
     \item{panel}{(Only when \code{overlap = TRUE}) A two-line label
       for \code{facet_wrap}, with the cluster identifier on the first
       line and the test statistic on the second. For single-pass
       scans the label looks like \code{"#1 P209\\n(LR=39.6)"}; for
-      iterative scans it looks like
-      \code{"Iter 1: P209\\n(LR=39.6, p_adj=0.005)"}. The newline
-      keeps long node identifiers from overflowing the strip in
-      multi-panel layouts.}
+      sequential scans it looks like
+      \code{"Iter 1: P209\\n(LR=39.6, p=0.005)"}. The newline keeps
+      long node identifiers from overflowing the strip in multi-panel
+      layouts.}
   }
 }
 \description{
 Returns a data.frame indicating which cluster (if any) each region
-belongs to. This is the primary output for visualization — use it with
-any mapping package (ggplot2, leaflet, tmap, etc.).
+belongs to. This is the primary output for visualization --- use it
+with any mapping package (ggplot2, leaflet, tmap, etc.).
 }
 \details{
 This is a generic with methods for objects returned by
 \code{\link{treespatial_scan}}, \code{\link{circular_scan}}, and
-\code{\link{iterative_scan}}.
+\code{\link{sequential_scan}}.
 }
 \examples{
 data(london_collisions); data(london_tree)
@@ -82,5 +81,5 @@ head(cr)
 }
 \seealso{
 \code{\link{treespatial_scan}}, \code{\link{circular_scan}},
-  \code{\link{iterative_scan}}, \code{\link{filter_clusters}}
+  \code{\link{sequential_scan}}, \code{\link{filter_clusters}}
 }

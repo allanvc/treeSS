@@ -6,15 +6,17 @@
 #'
 #' This is a generic with methods for objects returned by
 #' \code{\link{treespatial_scan}}, \code{\link{circular_scan}}, and
-#' \code{\link{iterative_scan}}.
+#' \code{\link{sequential_scan}}.
 #'
-#' @param result Either a \code{"treespatial_scan"}/\code{"circular_scan"}
-#'   object (single-pass scan) or an \code{"iterative_scan"} object.
+#' @param result A \code{"treespatial_scan"} or \code{"circular_scan"}
+#'   object (single-pass scan), or a \code{"sequential_scan"} object
+#'   (Zhang, Assuncao and Kulldorff, 2010).
 #' @param n_clusters Integer. (Single-pass methods only.) Number of
 #'   clusters to extract. \code{1} returns only the most likely cluster.
 #'   Values greater than 1 use \code{\link{filter_clusters}} internally
 #'   to identify distinct secondary clusters. Default is \code{1}.
-#'   Ignored for iterative-scan inputs (every iteration is returned).
+#'   Ignored for sequential scan inputs (all detected iterations are
+#'   returned).
 #' @param overlap Logical. If \code{TRUE} (default), returns a facet-ready
 #'   data.frame: all regions are replicated for each cluster panel, with a
 #'   \code{panel} column for faceting and \code{cluster} marked only for
@@ -30,21 +32,18 @@
 #'     \item{node_id}{The tree node of the cluster, or \code{NA}.}
 #'     \item{llr}{The log-likelihood ratio of the cluster, or \code{NA}.}
 #'     \item{pvalue}{The p-value of the cluster, or \code{NA}.}
-#'     \item{pvalue_adjusted, significant}{(Iterative method only) The
-#'       Holm-Bonferroni adjusted p-value and corresponding significance
-#'       flag for the iteration.}
 #'     \item{panel}{(Only when \code{overlap = TRUE}) A two-line label
 #'       for \code{facet_wrap}, with the cluster identifier on the first
 #'       line and the test statistic on the second. For single-pass
 #'       scans the label looks like \code{"#1 P209\\n(LR=39.6)"}; for
-#'       iterative scans it looks like
-#'       \code{"Iter 1: P209\\n(LR=39.6, p_adj=0.005)"}. The newline
-#'       keeps long node identifiers from overflowing the strip in
-#'       multi-panel layouts.}
+#'       sequential scans it looks like
+#'       \code{"Iter 1: P209\\n(LR=39.6, p=0.005)"}. The newline keeps
+#'       long node identifiers from overflowing the strip in multi-panel
+#'       layouts.}
 #'   }
 #'
 #' @seealso \code{\link{treespatial_scan}}, \code{\link{circular_scan}},
-#'   \code{\link{iterative_scan}}, \code{\link{filter_clusters}}
+#'   \code{\link{sequential_scan}}, \code{\link{filter_clusters}}
 #'
 #' @examples
 #' data(london_collisions); data(london_tree)
@@ -77,8 +76,8 @@ get_cluster_regions.default <- function(result, n_clusters = 1L,
 
   if (!inherits(result, "treespatial_scan") &&
       !inherits(result, "circular_scan")) {
-    stop("'result' must be a treespatial_scan, circular_scan, or ",
-         "iterative_scan object.", call. = FALSE)
+    stop("'result' must be a treespatial_scan, circular_scan, ",
+         "or sequential_scan object.", call. = FALSE)
   }
   .get_cluster_regions_singlepass(result, n_clusters, overlap)
 }
@@ -86,50 +85,46 @@ get_cluster_regions.default <- function(result, n_clusters = 1L,
 
 #' @rdname get_cluster_regions
 #' @export
-get_cluster_regions.iterative_scan <- function(result, n_clusters = 1L,
-                                                 overlap = TRUE, ...) {
+get_cluster_regions.sequential_scan <- function(result, n_clusters = 1L,
+                                                  overlap = TRUE, ...) {
 
-  iter <- result
-  if (iter$n_iter == 0) {
+  seq_obj <- result
+  if (seq_obj$n_iter == 0) {
     return(data.frame())
   }
-  if (is.null(iter$regions)) {
-    stop("Iterative scan has no $regions table (tree-only scan). ",
+  if (is.null(seq_obj$regions)) {
+    stop("Sequential scan has no $regions table (tree-only scan). ",
          "Mapping by region is not applicable.", call. = FALSE)
   }
 
-  full_regions <- iter$regions
-  parts <- vector("list", iter$n_iter)
+  full_regions <- seq_obj$regions
+  parts <- vector("list", seq_obj$n_iter)
 
-  for (k in seq_len(iter$n_iter)) {
-    cl_regs <- iter$clusters$region_ids[[k]]
+  for (k in seq_len(seq_obj$n_iter)) {
+    cl_regs <- seq_obj$clusters$region_ids[[k]]
     in_cl   <- full_regions$region_id %in% cl_regs
 
     cr_k <- cbind(
       full_regions,
       data.frame(
-        cluster         = ifelse(in_cl, k, NA_integer_),
-        node_id         = ifelse(in_cl,
-                                  as.character(iter$clusters$node_id[k]),
-                                  NA_character_),
-        llr             = ifelse(in_cl, iter$clusters$llr[k], NA_real_),
-        pvalue          = ifelse(in_cl, iter$clusters$pvalue[k], NA_real_),
-        pvalue_adjusted = ifelse(in_cl, iter$clusters$pvalue_adjusted[k],
-                                  NA_real_),
-        significant     = ifelse(in_cl, iter$clusters$significant[k], NA),
+        cluster = ifelse(in_cl, k, NA_integer_),
+        node_id = ifelse(in_cl,
+                          as.character(seq_obj$clusters$node_id[k]),
+                          NA_character_),
+        llr     = ifelse(in_cl, seq_obj$clusters$llr[k],     NA_real_),
+        pvalue  = ifelse(in_cl, seq_obj$clusters$pvalue[k],  NA_real_),
         stringsAsFactors = FALSE
       )
     )
 
     if (overlap) {
-      sig_marker <- if (isTRUE(iter$clusters$significant[k])) "" else " (n.s.)"
-      # Split into two lines so facet_wrap shows the node name on
-      # line 1 (which can already be long, e.g. a multi-segment ICD-10
-      # path) and the test statistic / adjusted p-value on line 2.
-      cr_k$panel <- paste0("Iter ", k, ": ", iter$clusters$node_id[k], "\n",
-                           "(LR=", round(iter$clusters$llr[k], 1),
-                           ", p_adj=",
-                           format.pval(iter$clusters$pvalue_adjusted[k],
+      sig_marker <- if (isTRUE(seq_obj$clusters$significant[k])) ""
+                    else " (n.s.)"
+      cr_k$panel <- paste0("Iter ", k, ": ",
+                           seq_obj$clusters$node_id[k], "\n",
+                           "(LR=", round(seq_obj$clusters$llr[k], 1),
+                           ", p=",
+                           format.pval(seq_obj$clusters$pvalue[k],
                                         digits = 2),
                            sig_marker, ")")
     }
@@ -140,8 +135,7 @@ get_cluster_regions.iterative_scan <- function(result, n_clusters = 1L,
   if (overlap) {
     do.call(rbind, parts)
   } else {
-    # Non-overlap: one row per region, using the LOWEST iteration in which
-    # it appears (mirrors single-pass non-overlap semantics).
+    # Non-overlap: one row per region, lowest iteration wins.
     full <- do.call(rbind, parts)
     full <- full[order(full$cluster, na.last = TRUE), ]
     full[!duplicated(full$region_id), ]

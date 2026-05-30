@@ -28,9 +28,10 @@
 #' follows Kulldorff et al. (2003).
 #'
 #' When a dominant signal saturates the candidate pool (making distinct
-#' secondary clusters hard to find), consider using
-#' \code{\link{iterative_scan}} instead, which re-runs the scan after
-#' removing each detected cluster.
+#' secondary clusters hard to find), or when clusters shadow each other,
+#' consider using \code{\link{sequential_scan}} (Zhang, Assuncao and
+#' Kulldorff, 2010), which re-runs the scan after removing each detected
+#' cluster.
 #'
 #' @references
 #' Kulldorff, M. (1997). A spatial scan statistic. \emph{Communications in
@@ -45,7 +46,7 @@
 #' Statistics}, 32, 953-978. \doi{10.1007/s10651-025-00670-w}
 #'
 #' @seealso \code{\link{treespatial_scan}}, \code{\link{circular_scan}},
-#'   \code{\link{tree_scan}}, \code{\link{iterative_scan}}
+#'   \code{\link{tree_scan}}, \code{\link{sequential_scan}}
 #'
 #' @examples
 #' data(london_collisions); data(london_tree)
