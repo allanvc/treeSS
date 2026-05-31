@@ -53,8 +53,8 @@ A \code{data.frame} with columns from \code{result$regions} plus:
 }
 \description{
 Returns a data.frame indicating which cluster (if any) each region
-belongs to. This is the primary output for visualization --- use it
-with any mapping package (ggplot2, leaflet, tmap, etc.).
+belongs to. This is the primary output for visualization — use it with
+any mapping package (ggplot2, leaflet, tmap, etc.).
 }
 \details{
 This is a generic with methods for objects returned by

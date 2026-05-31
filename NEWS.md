@@ -1,3 +1,53 @@
+# treeSS 0.1.52
+
+## Documentation
+
+* All help pages are now generated from roxygen2 comments. The twelve
+  `.Rd` files that were previously maintained by hand (the three map/raw
+  datasets `chicago_map`, `london_boroughs_map`, `fl_deaths`,
+  `filter_clusters()`, and the eight `print`/`summary` methods) have been
+  consolidated into the roxygen blocks in `R/data.R`, `R/filter_clusters.R`,
+  and `R/print.R`, so `devtools::document()` no longer skips them. Content
+  from the hand-written pages (the `st_simplify` note and merge tip for
+  `london_boroughs_map`, the Crown-copyright attribution, and the fuller
+  `fl_deaths` examples) was preserved. No user-visible change to the
+  rendered documentation.
+
+# treeSS 0.1.51
+
+## Unified Monte Carlo implementation across `n_cores`
+
+The three Monte Carlo routines (`mc_treespatial_cpp`, `mc_spatial_cpp`,
+`mc_treescan_cpp`) now use a **single native C++ implementation for every
+`n_cores >= 1`**. Previously `n_cores = 1` took a separate code path that
+used R's `rmultinom()` over `NumericMatrix` objects, while `n_cores > 1`
+used a native `std::mt19937` sampler over flat arrays.
+
+* **Results are now invariant to `n_cores`.** Each simulation draws from a
+  deterministic per-simulation seed (from R's RNG when `seed` is set), so
+  the simulated null distribution and the resulting `p`-value are identical
+  for any thread count given a fixed `seed`. `n_cores` changes only
+  wall-clock time.
+* **Serial and parallel timings are now directly comparable**, because the
+  only difference between them is the number of threads, not the algorithm
+  or the RNG.
+* **Behaviour change:** simulated `p`-values at `n_cores = 1` are no longer
+  bit-identical to the pre-0.1.50 serial path (which used R's `rmultinom`).
+  Observed statistics, most-likely clusters, and secondary-cluster
+  extraction are unaffected. Fix your `seed` to reproduce results.
+* Removed the now-unused serial-only helpers `aggregate_up()` and
+  `max_llr_all_pairs()`.
+
+## Examples
+
+* `example_chicago.R` now uses the compositional `population` denominator
+  (total incidents per area) rather than `pop_residential`. With the
+  residential denominator the most likely cluster is a broad-spectrum
+  spatial hotspot reported at the tree root; the compositional denominator
+  asks which (crime category, area) combinations are over-represented and
+  returns a specific branch, which is the tree-spatial use the method is
+  designed for.
+
 # treeSS 0.1.50 (2nd CRAN patch)
 
 Small adjustments to the DESCRIPTION file

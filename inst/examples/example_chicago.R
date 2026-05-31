@@ -7,8 +7,11 @@
 ##      get_cluster_regions(n_clusters = N).
 ##   2. sequential_scan() -- Zhang, Assuncao & Kulldorff (2010).
 ##
-## Population denominator: ACS 2020 5-year residential population per
-## community area (replaces the bundled compositional 'population' column).
+## Population denominator: the compositional 'population' column (total
+## incidents per community area). This asks which (crime type, area)
+## combinations are over-represented relative to the citywide mix of
+## incidents -- an inherently tree-spatial question, for which a specific
+## branch (not the root) is the expected most-likely cluster.
 ##=============================================================================
 
 options(bitmapType = "cairo")
@@ -37,21 +40,22 @@ crime_desc <- function(node_id) {
 }
 
 
-## ---- 2. Choose denominator: residents (not total incidents) ----
+## ---- 2. Choose denominator: compositional (total incidents per area) ----
 ##
 ## chicago_crimes ships with two denominator columns:
-##   * population:      total incidents per area (compositional - useful
-##                       for "which crime types over-occur where", but
-##                       not a population at risk)
-##   * pop_residential: ACS 2020 5-year residential population. This is
-##                       the appropriate denominator for an incidence-rate
-##                       analysis (incidents per resident), analogous to
-##                       deaths/live_births in the paper's RJ application.
+##   * population:      total incidents per area. With this denominator the
+##                       expected count of the root branch equals its
+##                       observed count, so the root cannot win and the scan
+##                       reports a specific (crime type, area) combination --
+##                       the tree-spatial question of interest.
+##   * pop_residential: ACS 2020 5-year residential population. With this
+##                       denominator the scan answers an incidence-rate
+##                       question (incidents per resident); on these data the
+##                       most-likely cluster is a broad-spectrum spatial
+##                       hotspot reported at the root, not a specific branch.
 ##
-## We use pop_residential below.
-cat("Total Chicago residents:",
-    sum(unique(chicago_crimes[, c("area_number", "pop_residential")])$pop_residential),
-    "\n")
+## We use the compositional 'population' below.
+cat("Denominator: compositional (total incidents per area)\n")
 
 
 ## ---- 3. Run the tree-spatial scan ----
@@ -59,7 +63,7 @@ cat("\nRunning tree-spatial scan (nsim=999, n_cores=4)...\n")
 system.time({
   result_chi <- treespatial_scan(
     cases       = chicago_crimes$cases,
-    population  = chicago_crimes$pop_residential,
+    population  = chicago_crimes$population,
     region_id   = chicago_crimes$region_id,
     x           = chicago_crimes$x,
     y           = chicago_crimes$y,
@@ -77,14 +81,14 @@ print(result_chi)
 cat("\n=== Distinct top clusters (paper Sec. 5.1.1) ===\n")
 fc <- filter_clusters(result_chi)
 print(head(fc[, c("node_id", "n_regions", "cases", "expected", "llr", "pvalue")],
-            5))
+           5))
 
 
 ## ---- 5. Sequential scan (Zhang, Assuncao & Kulldorff, 2010) ----
 cat("\n=== Sequential scan (Zhang et al. 2010) ===\n")
 seq_chi <- sequential_scan(
   cases       = chicago_crimes$cases,
-  population  = chicago_crimes$pop_residential,
+  population  = chicago_crimes$population,
   region_id   = chicago_crimes$region_id,
   x           = chicago_crimes$x,
   y           = chicago_crimes$y,
@@ -152,7 +156,7 @@ p2 <- ggplot(chi2) +
                     name = "Cluster", na.translate = FALSE) +
   facet_wrap(~ panel, nrow = 1) +
   labs(title    = "Tree-Spatial Scan: Top 2 Distinct Clusters",
-       subtitle = "Cancado et al. (2025), Sec. 5.1.1 - denominator: residents") +
+       subtitle = "Cancado et al. (2025), Sec. 5.1.1 - denominator: total incidents per area") +
   theme_minimal(base_size = 11) +
   theme(plot.title    = element_text(face = "bold"),
         plot.subtitle = element_text(color = "gray40"),
@@ -173,7 +177,7 @@ if (n_iter > 0) {
   # NA-coloured rather than as an extra empty "NA" panel).
   panels <- unique(cr_seq$panel)
   cr_seq_keys <- unique(cr_seq[, c("area_number", "cluster", "node_id",
-                                    "llr", "pvalue", "panel")])
+                                   "llr", "pvalue", "panel")])
   chi_seq <- merge(
     do.call(rbind,
             lapply(panels, function(p) cbind(chicago_map, panel = p))),
@@ -185,7 +189,7 @@ if (n_iter > 0) {
     seq_len(n_iter)
   ]
   names(palette_seq) <- as.character(seq_len(n_iter))
-
+  
   n_sig <- sum(seq_chi$clusters$significant, na.rm = TRUE)
   p_seq <- ggplot(chi_seq) +
     geom_sf(aes(fill = factor(cluster)), color = "gray40",
@@ -194,8 +198,8 @@ if (n_iter > 0) {
                       name = "Iteration", na.translate = FALSE) +
     facet_wrap(~ panel, nrow = 1) +
     labs(title    = paste0("Sequential Scan (Zhang et al. 2010): ",
-                            n_iter, " iterations, ",
-                            n_sig, " significant"),
+                           n_iter, " iterations, ",
+                           n_sig, " significant"),
          subtitle = "Each panel = one iteration (regions removed before next).") +
     theme_minimal(base_size = 11) +
     theme(plot.title    = element_text(face = "bold"),
@@ -204,7 +208,7 @@ if (n_iter > 0) {
           axis.title    = element_blank(),
           axis.text     = element_text(color = "gray50", size = 7),
           legend.position = "none")
-
+  
   ggsave("chicago_clusters_sequential.png", p_seq,
          width = max(8, 4 * n_iter), height = 6, dpi = 300)
   cat("Saved: chicago_clusters_sequential.png (", n_iter, " iterations)\n")

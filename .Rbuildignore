@@ -1,14 +1,19 @@
-^paper$
+# --- RStudio / project files -------------------------------------------
 ^.*\.Rproj$
 ^\.Rproj\.user$
-^data-raw$
-^\.github$
-^_pkgdown\.yml$
-^docs$
-^pkgdown$
-^README\.Rmd$
+
+^package-build-and-install-script\.R$
+
+# --- Bundled manuscript (kept in git, excluded from the built tarball) --
+^paper$
+
+# --- Dev / CRAN-submission helpers (not part of the package) -----------
 ^cran-comments\.md$
-^CRAN-RELEASE$
-^\.gitignore$
-^.*\.tar\.gz$
 ^CRAN-SUBMISSION$
+^\.github$
+^codecov\.yml$
+^\.gitignore$
+^\.Rbuildignore$
+
+# NOTE: do NOT add inst/doc or build here — R CMD build regenerates
+# those into the tarball; ignoring them would ship a vignette-less package.

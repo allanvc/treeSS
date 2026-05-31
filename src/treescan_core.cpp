@@ -4,11 +4,14 @@
 // Zones stored in CSR (compressed sparse row) format for cache efficiency.
 // Fused multiply + LLR + max in a single pass (no temp matrix allocation).
 //
-// Monte Carlo simulation is parallelizable via OpenMP. Pass n_cores > 1 to
-// distribute simulations across threads. With n_cores = 1 the code takes
-// the single-threaded path, which uses R's rmultinom (bit-identical to
-// pre-0.1.2 behaviour). With n_cores > 1 a thread-local std::mt19937 is
-// used (R's RNG is not thread-safe), seeded from R's RNG for reproducibility.
+// Monte Carlo simulation uses a single native implementation for all
+// n_cores >= 1. Each simulation draws from a deterministic per-simulation
+// seed (taken from R's RNG when `seed` is set), so the simulated null
+// distribution is identical for any n_cores: n_cores changes only how many
+// OpenMP threads share the work, never the result. A thread-local
+// std::mt19937 is used because R's RNG is not thread-safe. This replaces
+// the earlier design, in which n_cores = 1 used R's rmultinom on a separate
+// code path; serial and parallel timings are now directly comparable.
 //
 // Supports Poisson and Binomial models (model: 0 = Poisson, 1 = Binomial).
 
@@ -138,28 +141,6 @@ static void rmultinom_thread(int n,
 
 // --- Aggregate tree bottom-up ---
 
-static void aggregate_up(NumericMatrix& mat,
-                          const IntegerVector& children_idx,
-                          const IntegerVector& children_ptr,
-                          const IntegerVector& proc_order,
-                          int n_regions) {
-  int n_order = proc_order.size();
-  for (int oi = 0; oi < n_order; oi++) {
-    int node = proc_order[oi];
-    int ch_start = children_ptr[node];
-    int ch_end   = children_ptr[node + 1];
-    if (ch_end > ch_start) {
-      for (int j = 0; j < n_regions; j++) {
-        double s = 0.0;
-        for (int c = ch_start; c < ch_end; c++) {
-          s += mat(children_idx[c], j);
-        }
-        mat(node, j) = s;
-      }
-    }
-  }
-}
-
 // aggregate_up variant that works on flat vector (for thread-local buffers)
 static void aggregate_up_flat(double* mat, int n_rows, int n_cols,
                                const int* children_idx,
@@ -182,31 +163,6 @@ static void aggregate_up_flat(double* mat, int n_rows, int n_cols,
 }
 
 // --- Max LLR across all (node, zone) pairs ---
-
-static double max_llr_all_pairs(const NumericMatrix& full_cases,
-                                 const NumericVector& Cg,
-                                 double N,
-                                 const IntegerVector& zone_region_idx,
-                                 const IntegerVector& zone_ptr,
-                                 const NumericVector& zone_pop,
-                                 int n_nodes, int n_zones, int model) {
-  double max_llr = 0.0;
-  for (int g = 0; g < n_nodes; g++) {
-    double Cb = Cg[g];
-    if (Cb <= 0.0) continue;
-    for (int z = 0; z < n_zones; z++) {
-      double cz = 0.0;
-      int zstart = zone_ptr[z];
-      int zend   = zone_ptr[z + 1];
-      for (int p = zstart; p < zend; p++) {
-        cz += full_cases(g, zone_region_idx[p]);
-      }
-      double llr = compute_llr(cz, zone_pop[z], Cb, N, model);
-      if (llr > max_llr) max_llr = llr;
-    }
-  }
-  return max_llr;
-}
 
 // Flat version for thread-local buffers
 static double max_llr_all_pairs_flat(const double* full_cases,
@@ -239,7 +195,7 @@ static double max_llr_all_pairs_flat(const double* full_cases,
 // ========================================================================
 // Monte Carlo for tree-spatial scan statistic
 // model: 0 = Poisson, 1 = Binomial
-// n_cores: number of OpenMP threads (>=1); 1 = serial (R rmultinom)
+// n_cores: number of OpenMP threads (>=1); the result is independent of it
 // ========================================================================
 // [[Rcpp::export]]
 List mc_treespatial_cpp(NumericMatrix full_cases,
@@ -287,51 +243,17 @@ List mc_treespatial_cpp(NumericMatrix full_cases,
 
   NumericVector sim_llr(nsim);
 
-  // ---- Serial path: bit-identical to pre-0.1.2 behaviour ----
-  if (n_cores <= 1) {
-    NumericMatrix sim_full(n_nodes, n_regions);
-    IntegerVector rN(n_regions);
-    NumericVector sim_Cg(n_nodes);
-
-    for (int s = 0; s < nsim; s++) {
-      if ((s + 1) % 50 == 0) Rcpp::checkUserInterrupt();
-
-      std::fill(sim_full.begin(), sim_full.end(), 0.0);
-
-      for (int li = 0; li < n_leaves; li++) {
-        int tr = leaf_tree_idx[li];
-        int Cg_leaf = (int)Cg[tr];
-        if (Cg_leaf <= 0) continue;
-        rmultinom(Cg_leaf, prob.begin(), n_regions, rN.begin());
-        for (int j = 0; j < n_regions; j++) {
-          sim_full(tr, j) = (double)rN[j];
-        }
-      }
-
-      aggregate_up(sim_full, children_idx, children_ptr, proc_order, n_regions);
-
-      for (int g = 0; g < n_nodes; g++) {
-        double rs = 0.0;
-        for (int j = 0; j < n_regions; j++) rs += sim_full(g, j);
-        sim_Cg[g] = rs;
-      }
-
-      sim_llr[s] = max_llr_all_pairs(sim_full, sim_Cg, N,
-                                      zone_region_idx, zone_ptr, zone_pop,
-                                      n_nodes, n_zones, model);
-    }
-
-    return List::create(
-      Named("obs_max_llr") = obs_max_llr,
-      Named("obs_best_g")  = obs_best_g + 1,
-      Named("obs_best_z")  = obs_best_z + 1,
-      Named("sim_llr")     = sim_llr
-    );
-  }
-
-  // ---- Parallel path (OpenMP) ----
+  // ---- Simulation path (single implementation for all n_cores) ----
+  // The native sampler over flat arrays is used for every n_cores >= 1:
+  // with n_cores = 1 it runs single-threaded, with n_cores > 1 the
+  // replicates are split across OpenMP threads. Because each simulation
+  // draws from a deterministic per-simulation seed (below), the result is
+  // identical for any n_cores given a fixed `seed`; n_cores changes only
+  // wall-clock time, never the simulated null distribution. This makes the
+  // serial and parallel timings directly comparable.
+  //
   // Draw one 32-bit seed per simulation from R's RNG so results are
-  // reproducible when `seed` is set in R regardless of n_cores.
+  // reproducible when `seed` is set in R, independent of n_cores.
   std::vector<uint32_t> seeds(nsim);
   for (int s = 0; s < nsim; s++) {
     // Uniform on [0, 2^32) via R's RNG
@@ -453,34 +375,10 @@ List mc_spatial_cpp(NumericVector cases,
 
   NumericVector sim_llr(nsim);
 
-  // ---- Serial path ----
-  if (n_cores <= 1) {
-    IntegerVector rN(n_regions);
-    for (int s = 0; s < nsim; s++) {
-      if ((s + 1) % 50 == 0) Rcpp::checkUserInterrupt();
-      rmultinom((int)C, prob.begin(), n_regions, rN.begin());
-
-      double max_llr = 0.0;
-      for (int z = 0; z < n_zones; z++) {
-        double cz = 0.0;
-        int zstart = zone_ptr[z];
-        int zend   = zone_ptr[z + 1];
-        for (int p = zstart; p < zend; p++) {
-          cz += (double)rN[zone_region_idx[p]];
-        }
-        double llr = compute_llr(cz, zone_pop[z], C, N, model);
-        if (llr > max_llr) max_llr = llr;
-      }
-      sim_llr[s] = max_llr;
-    }
-    return List::create(
-      Named("obs_max_llr") = obs_max_llr,
-      Named("obs_best_z")  = obs_best_z + 1,
-      Named("sim_llr")     = sim_llr
-    );
-  }
-
-  // ---- Parallel path ----
+  // ---- Simulation path (single implementation for all n_cores) ----
+  // See mc_treespatial_cpp: one native implementation for every
+  // n_cores >= 1, identical results for a fixed seed regardless of
+  // n_cores, so serial and parallel timings are directly comparable.
   std::vector<uint32_t> seeds(nsim);
   for (int s = 0; s < nsim; s++) {
     double u = ::unif_rand();
@@ -573,51 +471,10 @@ List mc_treescan_cpp(NumericVector node_cases,
   for (int i = 0; i < n_leaves; i++) total_leaf_pop += leaf_pop[i];
   for (int i = 0; i < n_leaves; i++) lprob[i] = leaf_pop[i] / total_leaf_pop;
 
-  // ---- Serial path ----
-  if (n_cores <= 1) {
-    NumericVector sim_node_cases(n_nodes);
-    IntegerVector rN(n_leaves);
-
-    for (int s = 0; s < nsim; s++) {
-      if ((s + 1) % 50 == 0) Rcpp::checkUserInterrupt();
-      std::fill(sim_node_cases.begin(), sim_node_cases.end(), 0.0);
-
-      rmultinom((int)C, lprob.begin(), n_leaves, rN.begin());
-      for (int li = 0; li < n_leaves; li++) {
-        sim_node_cases[leaf_tree_idx[li]] = (double)rN[li];
-      }
-
-      int n_order = proc_order.size();
-      for (int oi = 0; oi < n_order; oi++) {
-        int node = proc_order[oi];
-        int ch_start = children_ptr[node];
-        int ch_end   = children_ptr[node + 1];
-        if (ch_end > ch_start) {
-          double s_val = 0.0;
-          for (int c = ch_start; c < ch_end; c++) {
-            s_val += sim_node_cases[children_idx[c]];
-          }
-          sim_node_cases[node] = s_val;
-        }
-      }
-
-      double max_llr = 0.0;
-      for (int i = 0; i < n_nodes; i++) {
-        double llr = compute_llr(sim_node_cases[i], node_pop[i], C, N, model);
-        if (llr > max_llr) max_llr = llr;
-      }
-      sim_llr[s] = max_llr;
-    }
-
-    return List::create(
-      Named("obs_llr")     = obs_llr,
-      Named("obs_max_llr") = obs_max_llr,
-      Named("obs_best")    = obs_best + 1,
-      Named("sim_llr")     = sim_llr
-    );
-  }
-
-  // ---- Parallel path ----
+  // ---- Simulation path (single implementation for all n_cores) ----
+  // See mc_treespatial_cpp: one native implementation for every
+  // n_cores >= 1, identical results for a fixed seed regardless of
+  // n_cores, so serial and parallel timings are directly comparable.
   std::vector<uint32_t> seeds(nsim);
   for (int s = 0; s < nsim; s++) {
     double u = ::unif_rand();

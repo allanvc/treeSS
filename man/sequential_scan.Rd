@@ -70,7 +70,8 @@ tree-only scans.}
 \code{"binomial"}.}
 
 \item{seed}{Integer or \code{NULL}. Seed for the first iteration;
-subsequent iterations advance the RNG state.}
+subsequent iterations advance the RNG state to avoid using the
+same seed across iterations.}
 
 \item{verbose}{Logical. Print progress at each iteration.}
 
@@ -100,8 +101,8 @@ Implements the sequential adjustment of Zhang, Assuncao and Kulldorff
 (2010) for detecting secondary clusters. After the most likely cluster
 (MLC) is detected and found significant, the regions composing it
 (optionally together with a buffer of nearest-neighbour regions) are
-\emph{removed} from the dataset --- treated as a "lake" with no
-population and no cases --- and the scan is re-run on the reduced data
+\emph{removed} from the dataset -- treated as a \dQuote{lake} with no
+population and no cases -- and the scan is re-run on the reduced data
 with a fresh Monte Carlo simulation. The procedure is iterated until
 the MLC of the current reduced data is no longer significant, or
 \code{max_iter} is reached.
