@@ -20,7 +20,7 @@ selectable via the `model` argument.
 ## Installation
 
 ```r
-# From CRAN (after acceptance)
+# CRAN version
 install.packages("treeSS")
 
 # Development version from GitHub
