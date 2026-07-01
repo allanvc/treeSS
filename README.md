@@ -2,6 +2,14 @@
 
 **Tree-Spatial Scan Statistic for Cluster Detection**
 
+<!-- badges: start -->
+[![CRAN status](https://www.r-pkg.org/badges/version/treeSS)](https://CRAN.R-project.org/package=treeSS)
+[![R-CMD-check](https://github.com/allanvc/treeSS/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/allanvc/treeSS/actions/workflows/R-CMD-check.yaml)
+[![Codecov test coverage](https://codecov.io/gh/allanvc/treeSS/graph/badge.svg)](https://app.codecov.io/gh/allanvc/treeSS)
+[![Lifecycle: stable](https://img.shields.io/badge/lifecycle-stable-brightgreen.svg)](https://lifecycle.r-lib.org/articles/stages.html#stable)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+<!-- badges: end -->
+
 Implements the tree-spatial scan statistic (Cançado et al., 2025), which
 detects clusters that are anomalous in both geographic space and a
 hierarchical tree simultaneously. The method searches over circular spatial
@@ -58,7 +66,7 @@ cr <- get_cluster_regions(result, n_clusters = 3, overlap = FALSE)
 | `fl_deaths` | USA | General mortality | 65 counties | raw (built by user) |
 | `london_collisions` + `london_tree` | UK | Road collisions | 33 boroughs | Light x Road x Junction (81 nodes) |
 | `chicago_crimes` + `chicago_tree` | USA | Crime | 77 community areas | Type x Description x Location (2841 nodes) |
-| `london_boroughs_map`, `chicago_map` | | Polygon boundaries | | -- |
+| `rj_map`, `london_boroughs_map`, `chicago_map` | Brazil / UK / USA | Polygon boundaries | 92 / 33 / 77 | -- |
 
 ## Key functions
 
@@ -73,9 +81,12 @@ cr <- get_cluster_regions(result, n_clusters = 3, overlap = FALSE)
 
 The package is visualization-agnostic. `get_cluster_regions()` returns a
 data.frame that can be merged with any spatial object for plotting with
-ggplot2, leaflet, tmap, or any other mapping package. See `vignette("introduction")`
-for worked examples with ggplot2 + geobr (Brazil), leaflet + tigris (USA),
-and leaflet + sf (London).
+ggplot2, leaflet, tmap, or any other mapping package. The bundled `sf`
+boundary datasets (`rj_map`, `london_boroughs_map`, `chicago_map`) let the
+examples map clusters without any external boundary download. See
+`vignette("introduction")` for worked examples with ggplot2 + `rj_map`
+(Brazil), leaflet + tigris (USA), and leaflet + `london_boroughs_map`
+(London).
 
 ## References
 

@@ -1,3 +1,17 @@
+# treeSS 0.2.4
+
+## Documentation
+
+* `README.md` now carries the standard status badges (CRAN version,
+  R-CMD-check, Codecov test coverage, lifecycle, and license).
+
+* The README "Included datasets" table lists the `rj_map` dataset (added
+  in 0.2.2) alongside `london_boroughs_map` and `chicago_map` in the
+  polygon-boundaries row, and the "Visualization" section now points to the
+  bundled `sf` boundary datasets (`rj_map`, `london_boroughs_map`,
+  `chicago_map`) instead of the removed `geobr` download for the Brazil
+  example.
+
 # treeSS 0.2.3
 
 ## Examples and vignettes
