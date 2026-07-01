@@ -1,8 +1,4 @@
 # treeSS
-<!-- badges: start -->
-[![R-CMD-check](https://github.com/allanvc/treeSS/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/allanvc/treeSS/actions/workflows/R-CMD-check.yaml)
-[![Codecov test coverage](https://codecov.io/gh/allanvc/treeSS/graph/badge.svg)](https://app.codecov.io/gh/allanvc/treeSS)
-<!-- badges: end -->
 
 **Tree-Spatial Scan Statistic for Cluster Detection**
 
@@ -33,16 +29,17 @@ library(treeSS)
 data(london_collisions)
 data(london_tree)
 
-# The function takes parallel vectors - extract them from your data.frame
-# and pass each one explicitly. This makes the choice of denominator,
+# The scan functions take a data.frame as the first argument and refer to
+# its columns by name. This keeps the choice of denominator,
 # coordinates, etc. transparent.
 result <- treespatial_scan(
-  cases       = london_collisions$cases,
-  population  = london_collisions$population,
-  region_id   = london_collisions$region_id,
-  x           = london_collisions$x,
-  y           = london_collisions$y,
-  node_id     = london_collisions$node_id,
+  london_collisions,
+  cases       = cases,
+  population  = population,
+  region_id   = region_id,
+  x           = x,
+  y           = y,
+  node_id     = node_id,
   tree        = london_tree,
   nsim        = 999, seed = 42,
   n_cores     = 4L                 # parallelize the MC over 4 threads

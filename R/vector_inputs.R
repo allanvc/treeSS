@@ -204,3 +204,46 @@
     stringsAsFactors = FALSE
   )
 }
+
+
+## =============================================================================
+## Data/column interface helper (treeSS >= 0.2.0)
+##
+## The public scan functions take a `data` data.frame as their first argument
+## and refer to its columns by (unquoted) name. `.resolve_col()` turns a
+## captured argument expression into the corresponding vector, accepting:
+##   * a bare column name:        treespatial_scan(d, cases, ...)
+##   * a character column name:   treespatial_scan(d, "cases", ...)
+##   * an expression on columns:  treespatial_scan(d, raw_count * w, ...)
+## Expressions are evaluated in `data` first, then in the caller environment
+## `env`, so locally defined variables remain visible.
+## =============================================================================
+
+#' @keywords internal
+.resolve_col <- function(quo, data, env, arg_name) {
+  if (is.null(quo)) return(NULL)
+  # Literal string column name: treespatial_scan(d, "cases", ...)
+  if (is.character(quo) && length(quo) == 1L) {
+    if (!quo %in% names(data)) {
+      stop(sprintf("Column \"%s\" (argument `%s`) not found in `data`.",
+                   quo, arg_name), call. = FALSE)
+    }
+    return(data[[quo]])
+  }
+  val <- tryCatch(
+    eval(quo, data, env),
+    error = function(e)
+      stop(sprintf("Cannot resolve argument `%s` = `%s` against `data`: %s",
+                   arg_name, deparse(quo), conditionMessage(e)),
+           call. = FALSE)
+  )
+  # Indirection: a variable or expression that yields a single column name,
+  # e.g. `pop <- "live_births"; treespatial_scan(d, population = pop, ...)`.
+  # A scalar string that names a column of `data` is taken as that column.
+  # (The scan inputs are length-`nrow(data)` vectors, so a length-1 string
+  # is never itself a valid value here.)
+  if (is.character(val) && length(val) == 1L && val %in% names(data)) {
+    return(data[[val]])
+  }
+  val
+}

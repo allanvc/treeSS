@@ -3,10 +3,12 @@ test_that("tree_scan returns correct class and structure", {
     node_id   = c(1, 2, 3, 4, 5, 6, 7),
     parent_id = c(NA, 1, 1, 2, 2, 3, 3)
   )
-  cases <- c(50, 5, 3, 2)
-  pop   <- c(100, 100, 100, 100)
+  # leaves are 4, 5, 6, 7
+  dat <- data.frame(node_id = c(4, 5, 6, 7), cases = c(50, 5, 3, 2),
+                    pop = c(100, 100, 100, 100))
 
-  result <- tree_scan(tree, cases, population = pop, nsim = 49, seed = 42)
+  result <- tree_scan(dat, cases, node_id, tree = tree, population = pop,
+                      nsim = 49, seed = 42)
 
   expect_s3_class(result, "tree_scan")
   expect_true("most_likely_cluster" %in% names(result))
@@ -21,10 +23,11 @@ test_that("tree_scan detects obvious cluster", {
     parent_id = c(NA, 1, 1, 2, 2, 3, 3)
   )
   # Leaf 4 has far more cases
-  cases <- c(200, 5, 3, 2)
-  pop   <- c(100, 100, 100, 100)
+  dat <- data.frame(node_id = c(4, 5, 6, 7), cases = c(200, 5, 3, 2),
+                    pop = c(100, 100, 100, 100))
 
-  result <- tree_scan(tree, cases, population = pop, nsim = 199, seed = 77)
+  result <- tree_scan(dat, cases, node_id, tree = tree, population = pop,
+                      nsim = 199, seed = 77)
 
   # Node 4 or its parent (2) should be the most likely cluster
   expect_true(result$most_likely_cluster$node_id %in% c(2, 4))
@@ -36,19 +39,22 @@ test_that("tree_scan handles default population", {
     node_id   = c(1, 2, 3),
     parent_id = c(NA, 1, 1)
   )
-  cases <- c(10, 5)
+  # leaves are 2, 3
+  dat <- data.frame(node_id = c(2, 3), cases = c(10, 5))
 
-  result <- tree_scan(tree, cases, nsim = 19, seed = 1)
+  result <- tree_scan(dat, cases, node_id, tree = tree, nsim = 19, seed = 1)
   expect_s3_class(result, "tree_scan")
   expect_equal(result$total_population, 2)  # default pop = 1 per leaf
 })
 
-test_that("tree_scan errors on wrong cases length", {
+test_that("tree_scan errors on node_id that is not a leaf", {
   tree <- data.frame(
     node_id   = c(1, 2, 3),
     parent_id = c(NA, 1, 1)
   )
-  expect_error(tree_scan(tree, c(10, 5, 3)), "must equal the number of leaf")
+  dat <- data.frame(node_id = c(2, 3, 99), cases = c(10, 5, 3))
+  expect_error(tree_scan(dat, cases, node_id, tree = tree),
+               "not leaves of the tree")
 })
 
 test_that("tree_scan print method works", {
@@ -56,7 +62,10 @@ test_that("tree_scan print method works", {
     node_id   = c(1, 2, 3, 4, 5),
     parent_id = c(NA, 1, 1, 2, 2)
   )
-  result <- tree_scan(tree, c(30, 5, 2), population = rep(100, 3),
+  # leaves are 3, 4, 5
+  dat <- data.frame(node_id = c(3, 4, 5), cases = c(30, 5, 2),
+                    pop = rep(100, 3))
+  result <- tree_scan(dat, cases, node_id, tree = tree, population = pop,
                       nsim = 19, seed = 1)
   expect_output(print(result), "Tree-Based Scan")
 })

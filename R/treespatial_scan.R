@@ -6,10 +6,12 @@
 #' to identify pairs \eqn{(z, g)} with significantly more cases than
 #' expected.
 #'
-#' Inputs are passed as parallel vectors of equal length (one entry per
-#' (region, tree-leaf) observation). The user is responsible for choosing
-#' which column to use as \code{population} (e.g., total population, live
-#' births, person-years), making the choice of denominator explicit.
+#' Inputs are supplied through a single \code{data} data.frame in long
+#' format (one row per (region, tree-leaf) observation); the case, population,
+#' region, coordinate and leaf columns are referenced by name. The user is
+#' responsible for choosing which column to use as \code{population} (e.g.,
+#' total population, live births, person-years), making the choice of
+#' denominator explicit.
 #'
 #' \strong{Secondary clusters.} The returned object contains the most likely
 #' cluster as well as the full set of evaluated (zone, branch) pairs in
@@ -19,17 +21,22 @@
 #' \code{\link{filter_clusters}} or \code{\link{get_cluster_regions}} with
 #' \code{n_clusters > 1}.
 #'
-#' @param cases Numeric vector. Number of cases observed for each
-#'   (region, leaf) pair. Length \eqn{n}.
-#' @param population Numeric vector. Population (or denominator) of the
-#'   region for each row. The same value should be repeated across all
-#'   rows of a given region; if it varies, the first occurrence per
-#'   region is used and a warning is issued.
-#' @param region_id Vector of region identifiers. Length \eqn{n}.
-#' @param x,y Numeric vectors of region centroid coordinates. Like
-#'   \code{population}, these should be constant within region.
-#' @param node_id Vector of tree leaf identifiers. Length \eqn{n}. Each
-#'   value must match a leaf of the tree.
+#' @param data A \code{data.frame} in long format with one row per
+#'   (region, tree-leaf) observation. The \code{cases}, \code{population},
+#'   \code{region_id}, \code{x}, \code{y} and \code{node_id} arguments name
+#'   columns of this data.frame.
+#' @param cases Column of \code{data} giving the number of cases observed
+#'   for each (region, leaf) row. Given as an unquoted column name (a string
+#'   or an expression on columns also works).
+#' @param population Column of \code{data} giving the population (or
+#'   denominator) of the region for each row. The same value should be
+#'   repeated across all rows of a given region; if it varies, the first
+#'   occurrence per region is used and a warning is issued.
+#' @param region_id Column of \code{data} giving the region identifier.
+#' @param x,y Columns of \code{data} giving the region centroid coordinates.
+#'   Like \code{population}, these should be constant within region.
+#' @param node_id Column of \code{data} giving the tree leaf identifier for
+#'   each row. Each value must match a leaf of the tree.
 #' @param tree A \code{data.frame} with columns \code{node_id} and
 #'   \code{parent_id}. The root node(s) must have \code{parent_id = NA}.
 #'   As an alternative, pass \code{tree_node_id} and \code{tree_parent_id}
@@ -69,31 +76,49 @@
 #'   node_id   = c(1, 2, 3, 4, 5, 6, 7),
 #'   parent_id = c(NA, 1, 1, 2, 2, 3, 3)
 #' )
-#' # Build vectors: one row per (region, leaf) combination
-#' grid <- expand.grid(region_id = 1:n_regions, node_id = c(4, 5, 6, 7))
-#' xs   <- runif(n_regions, 0, 10)[grid$region_id]
-#' ys   <- runif(n_regions, 0, 10)[grid$region_id]
-#' cs   <- rpois(nrow(grid), lambda = 5)
-#' cs[grid$node_id == 4 & grid$region_id %in% 1:3] <- rpois(3, 30)
+#' # Long-format data.frame: one row per (region, leaf) combination
+#' crimes <- expand.grid(region_id = 1:n_regions, node_id = c(4, 5, 6, 7))
+#' xy <- data.frame(region_id = 1:n_regions,
+#'                  x = runif(n_regions, 0, 10),
+#'                  y = runif(n_regions, 0, 10))
+#' crimes <- merge(crimes, xy, by = "region_id")
+#' crimes$population <- 1000
+#' crimes$cases <- rpois(nrow(crimes), lambda = 5)
+#' crimes$cases[crimes$node_id == 4 & crimes$region_id %in% 1:3] <- rpois(3, 30)
 #'
 #' result <- treespatial_scan(
-#'   cases       = cs,
-#'   population  = rep(1000, nrow(grid)),
-#'   region_id   = grid$region_id,
-#'   x           = xs,
-#'   y           = ys,
-#'   node_id     = grid$node_id,
+#'   crimes,
+#'   cases       = cases,
+#'   population  = population,
+#'   region_id   = region_id,
+#'   x           = x,
+#'   y           = y,
+#'   node_id     = node_id,
 #'   tree        = tree,
 #'   nsim        = 99
 #' )
 #' print(result)
-treespatial_scan <- function(cases, population, region_id, x, y, node_id,
+treespatial_scan <- function(data, cases, population, region_id, x, y, node_id,
                              tree = NULL,
                              tree_node_id = NULL, tree_parent_id = NULL,
                              max_pop_pct = 0.5,
                              nsim = 999L, alpha = 0.05,
                              model = c("poisson", "binomial"),
                              seed = NULL, n_cores = 1L) {
+
+  ## --- resolve data/column inputs (substitutive interface, treeSS >= 0.2.0) ---
+  if (missing(data)) {
+    stop("`data` is required: a data.frame with one row per (region, leaf).",
+         call. = FALSE)
+  }
+  data <- as.data.frame(data)
+  .env <- parent.frame()
+  cases      <- .resolve_col(substitute(cases),      data, .env, "cases")
+  population <- .resolve_col(substitute(population),  data, .env, "population")
+  region_id  <- .resolve_col(substitute(region_id),   data, .env, "region_id")
+  x          <- .resolve_col(substitute(x),           data, .env, "x")
+  y          <- .resolve_col(substitute(y),           data, .env, "y")
+  node_id    <- .resolve_col(substitute(node_id),     data, .env, "node_id")
 
   model <- match.arg(model)
   model_int <- if (model == "binomial") 1L else 0L

@@ -5,30 +5,45 @@
 \title{Tree-Based Scan Statistic}
 \usage{
 tree_scan(
-  tree = NULL,
+  data,
   cases,
+  node_id,
+  tree = NULL,
   population = NULL,
+  tree_node_id = NULL,
+  tree_parent_id = NULL,
   nsim = 999L,
   alpha = 0.05,
   model = c("poisson", "binomial"),
   seed = NULL,
-  n_cores = 1L,
-  tree_node_id = NULL,
-  tree_parent_id = NULL
+  n_cores = 1L
 )
 }
 \arguments{
+\item{data}{A \code{data.frame} with one row per leaf node. The
+\code{cases}, \code{node_id} and (optional) \code{population} arguments
+name columns of this data.frame.}
+
+\item{cases}{Column of \code{data} giving case counts at the leaf level.
+Given as an unquoted column name (a string or expression also works).}
+
+\item{node_id}{Column of \code{data} giving the leaf identifier for each
+row. Each value must match a leaf of the tree.}
+
 \item{tree}{A \code{data.frame} with columns \code{node_id} and
 \code{parent_id}. Root node(s) must have \code{parent_id = NA}.
 Alternatively, pass the tree as parallel vectors via
 \code{tree_node_id} and \code{tree_parent_id}.}
 
-\item{cases}{A numeric vector of case counts at the leaf level.}
-
-\item{population}{A numeric vector of population at the leaf level, or a
-single value. For the binomial model, \code{population} is the number
+\item{population}{Optional column of \code{data} giving the population at
+the leaf level. For the binomial model, \code{population} is the number
 of trials (cases + controls) per leaf and is required. For the
-Poisson model, defaults to \code{1} per leaf if \code{NULL}.}
+Poisson model, defaults to \code{1} per leaf when omitted.}
+
+\item{tree_node_id, tree_parent_id}{Optional parallel vectors describing
+the tree as an alternative to the \code{tree} data.frame. Both must
+have the same length, and the root node(s) must have
+\code{tree_parent_id = NA}. Ignored when \code{tree} is supplied.}
 
 \item{nsim}{Integer. Number of Monte Carlo simulations. Default is
 \code{999}.}
@@ -46,11 +61,6 @@ subsequent draws in the user's session.}
 
 \item{n_cores}{Integer. Number of OpenMP threads for the Monte Carlo
 loop. Default is \code{1L} (serial). Set higher to parallelize.}
-
-\item{tree_node_id, tree_parent_id}{Optional parallel vectors describing
-the tree as an alternative to the \code{tree} data.frame. Both must
-have the same length, and the root node(s) must have
-\code{tree_parent_id = NA}. Ignored when \code{tree} is supplied.}
 }
 \value{
 An object of class \code{"tree_scan"} (see package help for
@@ -61,15 +71,25 @@ Performs the tree-based scan statistic for detecting clusters in
 hierarchical data. Uses a Poisson or binomial model with Monte Carlo
 simulation (implemented in C++ via Rcpp) for significance testing.
 }
+\details{
+Inputs are supplied through a single \code{data} data.frame with one row
+per leaf (rows are matched to the tree by \code{node_id}, so they need
+not be pre-ordered); counts are summed within leaf.
+}
 \examples{
 tree <- data.frame(
   node_id   = c(1, 2, 3, 4, 5, 6, 7, 8),
   parent_id = c(NA, 1, 1, 2, 2, 3, 3, 3)
 )
-cases <- c(50, 5, 3, 2, 4)
-pop   <- c(100, 100, 100, 100, 100)
+# One row per leaf (leaves are 4, 5, 6, 7, 8)
+leaf_data <- data.frame(
+  node_id = c(4, 5, 6, 7, 8),
+  cases   = c(50, 5, 3, 2, 4),
+  pop     = c(100, 100, 100, 100, 100)
+)
 
-result <- tree_scan(tree, cases, population = pop, nsim = 99)
+result <- tree_scan(leaf_data, cases = cases, node_id = node_id,
+                    tree = tree, population = pop, nsim = 99)
 print(result)
 }
 \references{

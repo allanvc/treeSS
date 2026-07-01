@@ -5,6 +5,7 @@
 \title{Kulldorff's Circular Spatial Scan Statistic}
 \usage{
 circular_scan(
+  data,
   cases,
   population,
   region_id,
@@ -20,15 +21,19 @@ circular_scan(
 )
 }
 \arguments{
-\item{cases}{Numeric vector of length \eqn{n} (one entry per region):
-total cases in each region.}
+\item{data}{A \code{data.frame} with one row per region. The
+\code{cases}, \code{population}, \code{region_id}, \code{x} and \code{y}
+arguments name columns of this data.frame.}
 
-\item{population}{Numeric vector of length \eqn{n}: population (or
+\item{cases}{Column of \code{data} giving the total cases in each region.
+Given as an unquoted column name (a string or expression also works).}
+
+\item{population}{Column of \code{data} giving the population (or
 denominator) of each region.}
 
-\item{region_id}{Vector of region identifiers, length \eqn{n}.}
+\item{region_id}{Column of \code{data} giving the region identifier.}
 
-\item{x, y}{Numeric vectors of region centroid coordinates, length \eqn{n}.}
+\item{x, y}{Columns of \code{data} giving the region centroid coordinates.}
 
 \item{max_pop_pct}{Numeric. Default \code{0.5}.}
 
@@ -53,21 +58,29 @@ An object of class \code{"circular_scan"}.
 }
 \description{
 Performs Kulldorff's circular spatial scan statistic for detecting
-spatial clusters. Inputs are passed as parallel vectors with one entry
-per region (cases must already be aggregated to the region level).
+spatial clusters. Inputs are supplied through a single \code{data}
+data.frame with one row per region (cases must already be aggregated to
+the region level); the relevant columns are referenced by name.
 }
 \examples{
 set.seed(42)
 n <- 20
-cases <- rpois(n, lambda = 10)
-cases[1:5] <- rpois(5, lambda = 30)
+regions <- data.frame(
+  region_id  = 1:n,
+  cases      = rpois(n, lambda = 10),
+  population = rep(1000, n),
+  x          = runif(n, 0, 10),
+  y          = runif(n, 0, 10)
+)
+regions$cases[1:5] <- rpois(5, lambda = 30)
 
 result <- circular_scan(
+  regions,
   cases       = cases,
-  population  = rep(1000, n),
-  region_id   = 1:n,
-  x           = runif(n, 0, 10),
-  y           = runif(n, 0, 10),
+  population  = population,
+  region_id   = region_id,
+  x           = x,
+  y           = y,
   nsim        = 99
 )
 print(result)

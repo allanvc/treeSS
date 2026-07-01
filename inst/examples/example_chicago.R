@@ -62,12 +62,13 @@ cat("Denominator: compositional (total incidents per area)\n")
 cat("\nRunning tree-spatial scan (nsim=999, n_cores=4)...\n")
 system.time({
   result_chi <- treespatial_scan(
-    cases       = chicago_crimes$cases,
-    population  = chicago_crimes$population,
-    region_id   = chicago_crimes$region_id,
-    x           = chicago_crimes$x,
-    y           = chicago_crimes$y,
-    node_id     = chicago_crimes$node_id,
+    chicago_crimes,
+    cases       = cases,
+    population  = population,
+    region_id   = region_id,
+    x           = x,
+    y           = y,
+    node_id     = node_id,
     tree        = chicago_tree,
     max_pop_pct = 0.25,
     nsim        = 999, seed = 2023,
@@ -87,12 +88,13 @@ print(head(fc[, c("node_id", "n_regions", "cases", "expected", "llr", "pvalue")]
 ## ---- 5. Sequential scan (Zhang, Assuncao & Kulldorff, 2010) ----
 cat("\n=== Sequential scan (Zhang et al. 2010) ===\n")
 seq_chi <- sequential_scan(
-  cases       = chicago_crimes$cases,
-  population  = chicago_crimes$population,
-  region_id   = chicago_crimes$region_id,
-  x           = chicago_crimes$x,
-  y           = chicago_crimes$y,
-  node_id     = chicago_crimes$node_id,
+  chicago_crimes,
+  cases       = cases,
+  population  = population,
+  region_id   = region_id,
+  x           = x,
+  y           = y,
+  node_id     = node_id,
   tree        = chicago_tree,
   max_iter    = 5, alpha = 0.05,
   nsim        = 999, seed = 2023,

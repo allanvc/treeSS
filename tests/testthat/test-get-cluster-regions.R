@@ -3,21 +3,16 @@ test_that("get_cluster_regions dispatches on sequential_scan", {
   data(london_tree)
 
   seq_res <- sequential_scan(
-    cases       = london_collisions$cases,
-    population  = london_collisions$population,
-    region_id   = london_collisions$region_id,
-    x           = london_collisions$x,
-    y           = london_collisions$y,
-    node_id     = london_collisions$node_id,
-    tree        = london_tree,
-    max_iter    = 3, nsim = 19, seed = 42,
+    london_collisions,
+    cases = cases, population = population, region_id = region_id,
+    x = x, y = y, node_id = node_id, tree = london_tree,
+    max_iter = 3, nsim = 19, seed = 42,
     max_pop_pct = 0.25, n_cores = 1L, verbose = FALSE
   )
 
   expect_s3_class(seq_res, "sequential_scan")
   expect_gt(seq_res$n_iter, 0)
 
-  # overlap = TRUE: each iteration replicates the full region universe
   cr <- get_cluster_regions(seq_res, overlap = TRUE)
   expect_s3_class(cr, "data.frame")
   expect_true(all(c("cluster", "node_id", "llr", "pvalue", "panel")
@@ -37,13 +32,9 @@ test_that("get_cluster_regions still works on single-pass scans", {
   data(london_tree)
 
   res <- treespatial_scan(
-    cases       = london_collisions$cases,
-    population  = london_collisions$population,
-    region_id   = london_collisions$region_id,
-    x           = london_collisions$x,
-    y           = london_collisions$y,
-    node_id     = london_collisions$node_id,
-    tree        = london_tree,
+    london_collisions,
+    cases = cases, population = population, region_id = region_id,
+    x = x, y = y, node_id = node_id, tree = london_tree,
     max_pop_pct = 0.25, nsim = 19, seed = 42, n_cores = 1L
   )
 
@@ -59,10 +50,11 @@ test_that("get_cluster_regions on sequential_scan rejects tree-only", {
 
   agg <- stats::aggregate(cases ~ node_id, data = london_collisions,
                           FUN = sum)
-  pop <- rep(sum(london_collisions$population) / nrow(agg), nrow(agg))
+  agg$population <- rep(sum(london_collisions$population) / nrow(agg),
+                        nrow(agg))
   seq_t <- sequential_scan(
-    cases = agg$cases, population = pop, tree = london_tree,
-    max_iter = 2, nsim = 19, seed = 42, verbose = FALSE
+    agg, cases = cases, population = population, node_id = node_id,
+    tree = london_tree, max_iter = 2, nsim = 19, seed = 42, verbose = FALSE
   )
 
   expect_error(get_cluster_regions(seq_t),

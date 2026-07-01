@@ -11,7 +11,7 @@
 ##   - Load raw long-format data (fl_deaths)
 ##   - Build ICD-10 tree directly from the codes that actually appear
 ##   - Download county polygons + centroids from tigris
-##   - Build parallel vectors (cases, population, region_id, x, y, node_id)
+##   - Assemble a long-format data.frame (cases, population, region_id, x, y, node_id)
 ##   - Run the standard scan plus both secondary-cluster procedures
 ##
 ## Data: CDC WONDER Compressed Mortality File 1999-2016
@@ -124,7 +124,7 @@ fl_map$x <- coords[, "X"]
 fl_map$y <- coords[, "Y"]
 
 
-## ---- 4. Build parallel vectors ----
+## ---- 4. Assemble the long-format data.frame ----
 fl_pop <- aggregate(population ~ county_fips, data = fl_deaths, FUN = max)
 xy <- data.frame(county_fips = fl_map$GEOID, x = fl_map$x, y = fl_map$y,
                   stringsAsFactors = FALSE)
@@ -143,12 +143,13 @@ cat("Long rows:", nrow(dat), "\n")
 cat("\nRunning tree-spatial scan (nsim=999, n_cores=4, max_pop_pct=0.05)...\n")
 system.time({
   result_fl <- treespatial_scan(
-    cases       = dat$deaths,
-    population  = dat$population,
-    region_id   = dat$region_id,
-    x           = dat$x,
-    y           = dat$y,
-    node_id     = dat$icd10_code,
+    dat,
+    cases       = deaths,
+    population  = population,
+    region_id   = region_id,
+    x           = x,
+    y           = y,
+    node_id     = icd10_code,
     tree        = fl_tree,
     max_pop_pct = 0.05,
     nsim        = 999, seed = 2016,
@@ -168,12 +169,13 @@ print(head(fc[, c("node_id", "n_regions", "cases", "expected", "llr", "pvalue")]
 ## ---- 7. Sequential scan (Zhang, Assuncao & Kulldorff, 2010) ----
 cat("\n=== Sequential scan (Zhang et al. 2010) ===\n")
 seq_fl <- sequential_scan(
-  cases       = dat$deaths,
-  population  = dat$population,
-  region_id   = dat$region_id,
-  x           = dat$x,
-  y           = dat$y,
-  node_id     = dat$icd10_code,
+  dat,
+  cases       = deaths,
+  population  = population,
+  region_id   = region_id,
+  x           = x,
+  y           = y,
+  node_id     = icd10_code,
   tree        = fl_tree,
   max_iter    = 5, alpha = 0.05,
   nsim        = 999, seed = 2016,

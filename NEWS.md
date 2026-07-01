@@ -1,3 +1,89 @@
+# treeSS 0.2.3
+
+## Examples and vignettes
+
+* `example_brazil_rj.R` and the `introduction` vignette now map clusters using
+  the bundled `rj_map` dataset (added in 0.2.2) instead of downloading
+  boundaries with `geobr`, so the Rio de Janeiro material runs without
+  `geobr`/`arrow`, consistent with the Chicago and London examples. All
+  example scripts use the data-frame/column scan interface.
+
+# treeSS 0.2.2
+
+## New data
+
+* Added the `rj_map` dataset: `sf` polygon boundaries for the 92
+  municipalities of Rio de Janeiro state (IBGE Malhas Municipais), with an
+  `ibge_code` join key to `rj_mortality`. The Rio de Janeiro example now maps
+  clusters with `data(rj_map)`, mirroring `chicago_map` and
+  `london_boroughs_map`, so it no longer requires an external polygon
+  download (previously `geobr::read_municipality()`).
+
+# treeSS 0.2.1
+
+## Programmatic column selection
+
+* The column arguments of the scan functions now also accept a column name
+  held in a variable, e.g. `pop <- "live_births"; treespatial_scan(data,
+  population = pop, ...)`. Previously only a bare name (`population`) or a
+  literal string (`"live_births"`) worked; a variable holding the name was
+  mis-resolved as a length-1 value, which failed with a confusing
+  "must have the same length as 'cases'" error. This makes programmatic use
+  (looping over datasets/denominators) work as expected. Bare names, literal
+  strings, and expressions over columns continue to work unchanged.
+
+# treeSS 0.2.0
+
+## Breaking change: data/column interface
+
+The scan functions no longer take parallel vectors. Each now takes a
+**`data` data.frame as its first argument** and refers to its columns by
+(unquoted) name. This makes calls shorter, pipe-friendly (`data |>
+treespatial_scan(...)`), and removes the repeated `df$column` boilerplate.
+
+* `treespatial_scan()`, `circular_scan()`, `sequential_scan()` and
+  `aggregate_tree()` gained a leading `data` argument; their `cases`,
+  `population`, `region_id`, `x`, `y` and `node_id` arguments now name
+  columns of `data` rather than being vectors. Column arguments accept an
+  unquoted name (`cases`), a string (`"cases"`), or an expression on
+  columns (`raw_count * weight`).
+
+* `tree_scan()` is now keyed by `node_id`: it takes
+  `tree_scan(data, cases, node_id, tree, population = NULL)` with one row
+  per leaf. Rows are matched to the tree by `node_id` (so they no longer
+  need to be pre-ordered to the tree's leaf order), and counts are summed
+  within leaf.
+
+* `sequential_scan()` tree-only mode now also requires a `node_id` column
+  (consistent with `tree_scan()`); previously it relied on the row order.
+
+* **Migration.** Wrap your vectors in a `data.frame` and pass column names:
+
+  ```r
+  # before (<= 0.1.x)
+  treespatial_scan(cases = d$cases, population = d$population,
+                   region_id = d$region_id, x = d$x, y = d$y,
+                   node_id = d$node_id, tree = tree)
+
+  # now (>= 0.2.0)
+  treespatial_scan(d, cases, population, region_id, x, y, node_id,
+                   tree = tree)
+  ```
+
+  The `tree` argument is unchanged (still a separate `node_id`/`parent_id`
+  data.frame, or the `tree_node_id`/`tree_parent_id` vectors). The returned
+  objects, their classes, and all `print`/`summary`/`filter_clusters()`/
+  `get_cluster_regions()` behaviour are unchanged.
+
+## Internal
+
+* New internal helper `.resolve_col()` performs the (base-R, dependency-free)
+  non-standard evaluation that maps column arguments to vectors. The C++
+  Monte Carlo core and the statistical results are unchanged.
+
+* Bundled example scripts (`inst/examples/`) and vignettes were updated to
+  the new interface.
+
 # treeSS 0.1.52
 
 ## Documentation

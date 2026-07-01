@@ -4,19 +4,29 @@
 #' hierarchical data. Uses a Poisson or binomial model with Monte Carlo
 #' simulation (implemented in C++ via Rcpp) for significance testing.
 #'
+#' Inputs are supplied through a single \code{data} data.frame with one row
+#' per leaf (rows are matched to the tree by \code{node_id}, so they need
+#' not be pre-ordered); counts are summed within leaf.
+#'
+#' @param data A \code{data.frame} with one row per leaf node. The
+#'   \code{cases}, \code{node_id} and (optional) \code{population} arguments
+#'   name columns of this data.frame.
+#' @param cases Column of \code{data} giving case counts at the leaf level.
+#'   Given as an unquoted column name (a string or expression also works).
+#' @param node_id Column of \code{data} giving the leaf identifier for each
+#'   row. Each value must match a leaf of the tree.
 #' @param tree A \code{data.frame} with columns \code{node_id} and
 #'   \code{parent_id}. Root node(s) must have \code{parent_id = NA}.
 #'   Alternatively, pass the tree as parallel vectors via
 #'   \code{tree_node_id} and \code{tree_parent_id}.
+#' @param population Optional column of \code{data} giving the population at
+#'   the leaf level. For the binomial model, \code{population} is the number
+#'   of trials (cases + controls) per leaf and is required. For the
+#'   Poisson model, defaults to \code{1} per leaf when omitted.
 #' @param tree_node_id,tree_parent_id Optional parallel vectors describing
 #'   the tree as an alternative to the \code{tree} data.frame. Both must
 #'   have the same length, and the root node(s) must have
 #'   \code{tree_parent_id = NA}. Ignored when \code{tree} is supplied.
-#' @param cases A numeric vector of case counts at the leaf level.
-#' @param population A numeric vector of population at the leaf level, or a
-#'   single value. For the binomial model, \code{population} is the number
-#'   of trials (cases + controls) per leaf and is required. For the
-#'   Poisson model, defaults to \code{1} per leaf if \code{NULL}.
 #' @param nsim Integer. Number of Monte Carlo simulations. Default is
 #'   \code{999}.
 #' @param alpha Numeric. Significance level. Default is \code{0.05}.
@@ -47,16 +57,34 @@
 #'   node_id   = c(1, 2, 3, 4, 5, 6, 7, 8),
 #'   parent_id = c(NA, 1, 1, 2, 2, 3, 3, 3)
 #' )
-#' cases <- c(50, 5, 3, 2, 4)
-#' pop   <- c(100, 100, 100, 100, 100)
+#' # One row per leaf (leaves are 4, 5, 6, 7, 8)
+#' leaf_data <- data.frame(
+#'   node_id = c(4, 5, 6, 7, 8),
+#'   cases   = c(50, 5, 3, 2, 4),
+#'   pop     = c(100, 100, 100, 100, 100)
+#' )
 #'
-#' result <- tree_scan(tree, cases, population = pop, nsim = 99)
+#' result <- tree_scan(leaf_data, cases = cases, node_id = node_id,
+#'                     tree = tree, population = pop, nsim = 99)
 #' print(result)
-tree_scan <- function(tree = NULL, cases, population = NULL, nsim = 999L,
-                      alpha = 0.05,
+tree_scan <- function(data, cases, node_id, tree = NULL, population = NULL,
+                      tree_node_id = NULL, tree_parent_id = NULL,
+                      nsim = 999L, alpha = 0.05,
                       model = c("poisson", "binomial"),
-                      seed = NULL, n_cores = 1L,
-                      tree_node_id = NULL, tree_parent_id = NULL) {
+                      seed = NULL, n_cores = 1L) {
+
+  ## --- resolve data/column inputs (substitutive interface, treeSS >= 0.2.0) ---
+  if (missing(data)) {
+    stop("`data` is required: a data.frame with one row per leaf.",
+         call. = FALSE)
+  }
+  data <- as.data.frame(data)
+  .env <- parent.frame()
+  .cases_in <- .resolve_col(substitute(cases),   data, .env, "cases")
+  .node_in  <- .resolve_col(substitute(node_id), data, .env, "node_id")
+  .q_pop    <- substitute(population)
+  .pop_in   <- if (is.null(.q_pop)) NULL else
+    .resolve_col(.q_pop, data, .env, "population")
 
   model <- match.arg(model)
   model_int <- if (model == "binomial") 1L else 0L
@@ -67,24 +95,34 @@ tree_scan <- function(tree = NULL, cases, population = NULL, nsim = 999L,
   leaves <- .get_leaves(tree)
   n_leaves <- length(leaves)
 
-  if (length(cases) != n_leaves) {
-    stop("Length of 'cases' must equal the number of leaf nodes (",
-         n_leaves, ").", call. = FALSE)
+  ## Match the leaf rows of `data` onto the canonical leaf order of the
+  ## tree. Cases are summed within leaf; the denominator is taken from the
+  ## first occurrence per leaf.
+  node_chr   <- as.character(.node_in)
+  leaves_chr <- as.character(leaves)
+  unknown <- setdiff(unique(node_chr), leaves_chr)
+  if (length(unknown) > 0) {
+    stop("'node_id' contains values that are not leaves of the tree: ",
+         paste(utils::head(unknown, 5), collapse = ", "),
+         if (length(unknown) > 5) ", ..." else "", ".", call. = FALSE)
   }
+  if (any(is.na(.cases_in))) stop("'cases' contains NA values.", call. = FALSE)
+  if (any(.cases_in < 0))    stop("'cases' must be non-negative.", call. = FALSE)
 
-  if (is.null(population)) {
+  fac   <- factor(node_chr, levels = leaves_chr)
+  cases <- as.numeric(tapply(as.numeric(.cases_in), fac, sum))
+  cases[is.na(cases)] <- 0
+
+  if (is.null(.pop_in)) {
     if (model == "binomial") {
-      stop("The binomial model requires 'population' (number of trials ",
-           "per leaf, i.e., cases + controls). Please supply a numeric ",
-           "vector.", call. = FALSE)
+      stop("The binomial model requires a `population` column (number of ",
+           "trials per leaf, i.e., cases + controls).", call. = FALSE)
     }
     population <- rep(1, n_leaves)
-  } else if (length(population) == 1) {
-    population <- rep(population, n_leaves)
-  }
-  if (length(population) != n_leaves) {
-    stop("Length of 'population' must equal the number of leaf nodes.",
-         call. = FALSE)
+  } else {
+    population <- as.numeric(tapply(as.numeric(.pop_in), fac,
+                                    function(z) z[1L]))
+    population[is.na(population)] <- 0
   }
 
   if (!is.null(seed)) {

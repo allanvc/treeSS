@@ -34,12 +34,13 @@ cat("Total collisions:", sum(london_collisions$cases), "\n")
 cat("\nRunning tree-spatial scan (nsim=999, n_cores=4)...\n")
 system.time({
   result_ldn <- treespatial_scan(
-    cases       = london_collisions$cases,
-    population  = london_collisions$population,
-    region_id   = london_collisions$region_id,
-    x           = london_collisions$x,
-    y           = london_collisions$y,
-    node_id     = london_collisions$node_id,
+    london_collisions,
+    cases       = cases,
+    population  = population,
+    region_id   = region_id,
+    x           = x,
+    y           = y,
+    node_id     = node_id,
     tree        = london_tree,
     max_pop_pct = 0.25,
     nsim        = 999, seed = 42,
@@ -59,12 +60,13 @@ print(head(fc[, c("node_id", "n_regions", "cases", "expected", "llr", "pvalue")]
 ## ---- 4. Sequential scan (Zhang, Assuncao & Kulldorff, 2010) ----
 cat("\n=== Sequential scan (Zhang et al. 2010) ===\n")
 seq_ldn <- sequential_scan(
-  cases       = london_collisions$cases,
-  population  = london_collisions$population,
-  region_id   = london_collisions$region_id,
-  x           = london_collisions$x,
-  y           = london_collisions$y,
-  node_id     = london_collisions$node_id,
+  london_collisions,
+  cases       = cases,
+  population  = population,
+  region_id   = region_id,
+  x           = x,
+  y           = y,
+  node_id     = node_id,
   tree        = london_tree,
   max_iter    = 5, alpha = 0.05,
   nsim        = 999, seed = 42,

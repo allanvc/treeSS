@@ -15,7 +15,6 @@ options(bitmapType = "cairo")     # robust PNG rendering on Linux servers
 
 library(treeSS)
 library(ggplot2)
-library(geobr)
 library(sf)
 
 
@@ -34,12 +33,13 @@ cat("Total deaths:         ", sum(rj_mortality$cases), "\n")
 cat("\nRunning tree-spatial scan (nsim=999, n_cores=4)...\n")
 system.time({
   result_rj <- treespatial_scan(
-    cases       = rj_mortality$cases,
-    population  = rj_mortality$live_births,
-    region_id   = rj_mortality$region_id,
-    x           = rj_mortality$x,
-    y           = rj_mortality$y,
-    node_id     = rj_mortality$node_id,
+    rj_mortality,
+    cases       = cases,
+    population  = live_births,
+    region_id   = region_id,
+    x           = x,
+    y           = y,
+    node_id     = node_id,
     tree        = rj_tree,
     max_pop_pct = 0.50,
     nsim        = 999, seed = 2016,
@@ -59,12 +59,13 @@ print(head(fc[, c("node_id", "n_regions", "cases", "expected", "llr", "pvalue")]
 ## ---- 4. Sequential scan (Zhang, Assuncao & Kulldorff, 2010) ----
 cat("\n=== Sequential scan (Zhang et al. 2010) ===\n")
 seq_rj <- sequential_scan(
-  cases       = rj_mortality$cases,
-  population  = rj_mortality$live_births,
-  region_id   = rj_mortality$region_id,
-  x           = rj_mortality$x,
-  y           = rj_mortality$y,
-  node_id     = rj_mortality$node_id,
+  rj_mortality,
+  cases       = cases,
+  population  = live_births,
+  region_id   = region_id,
+  x           = x,
+  y           = y,
+  node_id     = node_id,
   tree        = rj_tree,
   max_iter    = 5, alpha = 0.05,
   nsim        = 999, seed = 2016,
@@ -74,9 +75,10 @@ print(seq_rj)
 
 
 ## ---- 5. Polygons + cluster membership ----
-cat("\nDownloading RJ municipal boundaries...\n")
-mun <- read_municipality(code_muni = "RJ", year = 2016)
-mun$code6 <- as.integer(substr(mun$code_muni, 1, 6))
+## RJ municipal boundaries ship with the package (IBGE Malhas Municipais),
+## so no download is needed -- mirrors chicago_map / london_boroughs_map.
+data(rj_map)
+mun <- rj_map        # columns: ibge_code (6-digit), NAME, geometry
 
 region_info <- unique(rj_mortality[, c("region_id", "ibge_code", "name")])
 
@@ -89,7 +91,7 @@ cr_seq <- merge(get_cluster_regions(seq_rj, overlap = TRUE),
 
 
 ## ---- 6. Plot 1: Most likely cluster ----
-mun1 <- merge(mun, cr1, by.x = "code6", by.y = "ibge_code", all.x = TRUE)
+mun1 <- merge(mun, cr1, by = "ibge_code", all.x = TRUE)
 mlc  <- result_rj$most_likely_cluster
 
 p1 <- ggplot(mun1) +
@@ -120,7 +122,7 @@ cat("Saved: rj_cluster_mlc.png\n")
 
 
 ## ---- 7. Plot 2: Top-2 distinct clusters (paper Sec. 5.1.1) ----
-mun2 <- merge(mun, cr2, by.x = "code6", by.y = "ibge_code")
+mun2 <- merge(mun, cr2, by = "ibge_code")
 palette2 <- c("1" = "#C44E52", "2" = "#4C72B0")
 
 p2 <- ggplot(mun2) +
@@ -156,7 +158,7 @@ if (n_iter > 0) {
     do.call(rbind,
             lapply(panels, function(p) cbind(mun, panel = p))),
     cr_seq_keys,
-    by.x = c("code6", "panel"), by.y = c("ibge_code", "panel"),
+    by = c("ibge_code", "panel"),
     all.x = TRUE
   )
 

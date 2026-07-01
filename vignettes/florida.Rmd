@@ -35,9 +35,9 @@ What you will see:
 
   1. How to **build the ICD-10 tree** directly from the codes that
      appear in the raw data.
-  2. How to **assemble parallel vectors** of `(cases, population,
-     region_id, x, y, node_id)` by joining the case table to a
-     polygon layer fetched on demand.
+  2. How to **assemble a long-format `data.frame`** with `(cases,
+     population, region_id, x, y, node_id)` columns by joining the case
+     table to a polygon layer fetched on demand.
   3. How to run `treespatial_scan()`, `filter_clusters()`, and
      `sequential_scan()` on the assembled inputs and visualise the
      results.
@@ -200,12 +200,12 @@ Two technical points worth stating explicitly:
 
 ---
 
-## 4. Assemble parallel vectors
+## 4. Assemble the long-format data.frame
 
-`treespatial_scan()` consumes six parallel vectors of identical
-length — one row per (region, leaf) observation. We join the case
-table to the population (which is constant per county in
-`fl_deaths`) and to the coordinates from `fl_map`:
+`treespatial_scan()` consumes a single long-format `data.frame` with
+one row per (region, leaf) observation, and refers to its columns by
+name. We join the case table to the population (which is constant per
+county in `fl_deaths`) and to the coordinates from `fl_map`:
 
 ```{r fl-vectors}
 # Per-county population: same value across all leaves, so take any one
@@ -245,12 +245,13 @@ population, coordinates, and node identifier.
 
 ```{r fl-scan}
 result_fl <- treespatial_scan(
-  cases       = dat$deaths,
-  population  = dat$population,
-  region_id   = dat$region_id,
-  x           = dat$x,
-  y           = dat$y,
-  node_id     = dat$icd10_code,
+  dat,
+  cases       = deaths,
+  population  = population,
+  region_id   = region_id,
+  x           = x,
+  y           = y,
+  node_id     = icd10_code,
   tree        = fl_tree,
   max_pop_pct = 0.05,
   nsim        = 999, seed = 2016,
@@ -294,12 +295,13 @@ $O(k^2)$ time.
 
 ```{r fl-seq}
 seq_fl <- sequential_scan(
-  cases       = dat$deaths,
-  population  = dat$population,
-  region_id   = dat$region_id,
-  x           = dat$x,
-  y           = dat$y,
-  node_id     = dat$icd10_code,
+  dat,
+  cases       = deaths,
+  population  = population,
+  region_id   = region_id,
+  x           = x,
+  y           = y,
+  node_id     = icd10_code,
   tree        = fl_tree,
   max_iter    = 5L, alpha = 0.05,
   nsim        = 999, seed = 2016,

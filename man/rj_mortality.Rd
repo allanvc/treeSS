@@ -40,10 +40,11 @@ as the population denominator:
 \preformatted{
   data <- rj_mortality
   data$population <- data$live_births
-  treespatial_scan(data, rj_tree, ...)
+  treespatial_scan(data, cases, population, region_id, x, y, node_id,
+                   tree = rj_tree, ...)
 }
 
-Municipality polygons can be obtained via \code{geobr::read_municipality()}.
+Municipality polygons are provided as the \code{rj_map} dataset.
 }
 \examples{
 data(rj_mortality)

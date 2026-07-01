@@ -5,8 +5,9 @@
 \title{Sequential Scan for Secondary Clusters}
 \usage{
 sequential_scan(
-  cases = NULL,
-  population = NULL,
+  data,
+  cases,
+  population,
   region_id = NULL,
   x = NULL,
   y = NULL,
@@ -26,17 +27,18 @@ sequential_scan(
 )
 }
 \arguments{
-\item{cases}{Numeric vector. For tree-spatial scan: one entry per
-(region, leaf) row. For circular: one entry per region. For
-tree-only: one entry per leaf.}
+\item{data}{A \code{data.frame} whose columns are named by the
+\code{cases}, \code{population} and (depending on scan type)
+\code{region_id}, \code{x}, \code{y}, \code{node_id} arguments.}
 
-\item{population}{Numeric vector parallel to \code{cases}.}
+\item{cases}{Column of \code{data} giving case counts. Given as an
+unquoted column name (a string or expression also works).}
 
-\item{region_id, x, y}{Vectors parallel to \code{cases} (omit for
-tree-only scan).}
+\item{population}{Column of \code{data} giving the denominator.}
 
-\item{node_id}{Vector parallel to \code{cases} (omit for circular and
-tree-only scans).}
+\item{region_id, x, y}{Columns of \code{data} (omit for tree-only scan).}
+
+\item{node_id}{Column of \code{data} (omit for circular scan).}
 
 \item{tree}{Tree as a 2-column data.frame
 (\code{node_id, parent_id}), or use
@@ -114,28 +116,33 @@ Cancado et al. 2025 criterion). The sequential approach computes a
 fresh, unconservative p-value for each secondary cluster, conditional
 on the prior detections.
 
-Dispatch on the supplied arguments selects one of three scan types:
+Inputs are supplied through a single \code{data} data.frame; the
+relevant columns are referenced by name. Which columns are supplied
+selects one of three scan types:
 \itemize{
   \item tree-spatial: all of \code{cases}, \code{population},
         \code{region_id}, \code{x}, \code{y}, \code{node_id},
-        \code{tree} are required;
+        \code{tree} are required (\code{data} in long format, one row
+        per (region, leaf));
   \item circular: \code{cases}, \code{population}, \code{region_id},
-        \code{x}, \code{y} (no \code{node_id} / \code{tree});
-  \item tree-only: \code{cases}, \code{population}, \code{tree}
-        (no spatial inputs). \code{buffer_size} is ignored for the
-        tree-only case.
+        \code{x}, \code{y} (no \code{node_id} / \code{tree};
+        one row per region);
+  \item tree-only: \code{cases}, \code{population}, \code{node_id},
+        \code{tree} (no spatial inputs). \code{buffer_size} is ignored
+        for the tree-only case.
 }
 }
 \examples{
 \donttest{
 data(london_collisions); data(london_tree)
 result <- sequential_scan(
-  cases       = london_collisions$cases,
-  population  = london_collisions$population,
-  region_id   = london_collisions$region_id,
-  x           = london_collisions$x,
-  y           = london_collisions$y,
-  node_id     = london_collisions$node_id,
+  london_collisions,
+  cases       = cases,
+  population  = population,
+  region_id   = region_id,
+  x           = x,
+  y           = y,
+  node_id     = node_id,
   tree        = london_tree,
   max_iter = 3, nsim = 99, seed = 42
 )

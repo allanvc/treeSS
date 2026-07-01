@@ -1,13 +1,17 @@
 #' Aggregate Case Counts from Leaves to All Nodes in a Hierarchical Tree
 #'
-#' Given case counts at the leaf level (as parallel vectors) and a tree,
-#' aggregates case counts upward from child nodes to parent nodes,
-#' producing a complete case matrix indexed by all nodes (rows) and
-#' regions (columns).
+#' Given case counts at the leaf level (supplied as columns of a long-format
+#' \code{data} data.frame) and a tree, aggregates case counts upward from
+#' child nodes to parent nodes, producing a complete case matrix indexed by
+#' all nodes (rows) and regions (columns).
 #'
-#' @param cases Numeric vector of length \eqn{n}: case counts.
-#' @param region_id Vector of region identifiers, length \eqn{n}.
-#' @param node_id Vector of leaf identifiers, length \eqn{n}.
+#' @param data A \code{data.frame} in long format with one row per
+#'   (region, leaf) observation. The \code{cases}, \code{region_id} and
+#'   \code{node_id} arguments name columns of this data.frame.
+#' @param cases Column of \code{data} giving case counts. Given as an
+#'   unquoted column name (a string or expression also works).
+#' @param region_id Column of \code{data} giving the region identifier.
+#' @param node_id Column of \code{data} giving the leaf identifier.
 #' @param tree A \code{data.frame} with columns \code{node_id} and
 #'   \code{parent_id}. As an alternative, pass \code{tree_node_id} and
 #'   \code{tree_parent_id}.
@@ -20,7 +24,7 @@
 #' @details
 #' This function is exposed for inspection and pedagogical use; the scan
 #' functions call it internally on the matrix they build from your input
-#' vectors.
+#' data.
 #'
 #' @references
 #' Cancado, A. L. F., Oliveira, G. S., Quadros, A. V. C., & Duczmal, L.
@@ -34,16 +38,28 @@
 #'   node_id   = c(1, 2, 3, 4, 5, 6, 7),
 #'   parent_id = c(NA, 1, 1, 2, 2, 3, 3)
 #' )
-#' # Leaves are 4, 5, 6, 7
-#' aggregate_tree(
+#' # Leaves are 4, 5, 6, 7; long-format data.frame
+#' dat <- data.frame(
 #'   cases     = c(10, 5, 3, 8,  2, 7, 4, 1,  6, 3, 9, 2),
 #'   region_id = rep(1:3, each = 4),
-#'   node_id   = rep(c(4, 5, 6, 7), times = 3),
-#'   tree      = tree
+#'   node_id   = rep(c(4, 5, 6, 7), times = 3)
 #' )
-aggregate_tree <- function(cases, region_id, node_id,
+#' aggregate_tree(dat, cases = cases, region_id = region_id,
+#'                node_id = node_id, tree = tree)
+aggregate_tree <- function(data, cases, region_id, node_id,
                            tree = NULL,
                            tree_node_id = NULL, tree_parent_id = NULL) {
+
+  ## --- resolve data/column inputs (substitutive interface, treeSS >= 0.2.0) ---
+  if (missing(data)) {
+    stop("`data` is required: a data.frame with one row per (region, leaf).",
+         call. = FALSE)
+  }
+  data <- as.data.frame(data)
+  .env <- parent.frame()
+  cases     <- .resolve_col(substitute(cases),     data, .env, "cases")
+  region_id <- .resolve_col(substitute(region_id), data, .env, "region_id")
+  node_id   <- .resolve_col(substitute(node_id),   data, .env, "node_id")
 
   tree <- .normalize_tree(tree, tree_node_id, tree_parent_id)
   .validate_tree(tree)

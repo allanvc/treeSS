@@ -43,10 +43,11 @@
 #' \preformatted{
 #'   data <- rj_mortality
 #'   data$population <- data$live_births
-#'   treespatial_scan(data, rj_tree, ...)
+#'   treespatial_scan(data, cases, population, region_id, x, y, node_id,
+#'                    tree = rj_tree, ...)
 #' }
 #'
-#' Municipality polygons can be obtained via \code{geobr::read_municipality()}.
+#' Municipality polygons are provided as the \code{rj_map} dataset.
 #'
 #' @source
 #' Population: IBGE municipal estimates. Live births: DATASUS/SINASC via
@@ -326,7 +327,8 @@
 #'                     cases     = deaths)
 #'   # Add x, y from a centroids table
 #'   data <- merge(data, centroids, by = "county_fips")
-#'   treespatial_scan(data, fl_tree, ...)
+#'   treespatial_scan(data, cases, population, region_id, x, y, node_id,
+#'                    tree = fl_tree, ...)
 #' }
 #'
 #' County polygons and centroids can be obtained via
@@ -346,3 +348,28 @@
 #' cat("ICD-10 codes:", length(unique(fl_deaths$icd10_code)), "\n")
 #' cat("Total deaths:", sum(fl_deaths$deaths), "\n")
 "fl_deaths"
+
+
+#' Rio de Janeiro Municipal Boundaries
+#'
+#' Polygon boundaries for the 92 municipalities of Rio de Janeiro state,
+#' used to map clusters from the \code{rj_mortality} analysis.
+#'
+#' @format An \code{sf} data.frame with 92 rows and 3 columns:
+#' \describe{
+#'   \item{ibge_code}{6-digit IBGE municipality code; join key to
+#'     \code{rj_mortality$ibge_code}.}
+#'   \item{NAME}{Municipality name.}
+#'   \item{geometry}{MULTIPOLYGON geometry in WGS84 (EPSG:4326).}
+#' }
+#'
+#' @source
+#' Municipal boundaries (Malhas Municipais) from the Brazilian Institute of
+#' Geography and Statistics (IBGE).
+#'
+#' @seealso \code{\link{rj_mortality}}
+#'
+#' @examples
+#' data(rj_map)
+#' cat("Municipalities:", nrow(rj_map), "\n")
+"rj_map"

@@ -48,13 +48,18 @@ matching the input format expected by \code{\link{treespatial_scan}}.
 }
 \examples{
 ex <- generate_example_data(seed = 42)
+dat <- data.frame(
+  cases = ex$cases, population = ex$population, region_id = ex$region_id,
+  x = ex$x, y = ex$y, node_id = ex$node_id
+)
 result <- treespatial_scan(
-  cases       = ex$cases,
-  population  = ex$population,
-  region_id   = ex$region_id,
-  x           = ex$x,
-  y           = ex$y,
-  node_id     = ex$node_id,
+  dat,
+  cases       = cases,
+  population  = population,
+  region_id   = region_id,
+  x           = x,
+  y           = y,
+  node_id     = node_id,
   tree        = ex$tree,
   nsim        = 99
 )

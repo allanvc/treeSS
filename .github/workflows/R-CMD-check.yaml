@@ -20,7 +20,9 @@ jobs:
       matrix:
         config:
           - {os: macos-latest,   r: 'release'}
-          - {os: windows-latest, r: 'release'}
+          # windows-2022 em vez de windows-latest: a imagem nova
+          # (windows-2025-vs2026) vinha derrubando o setup-r-dependencies.
+          - {os: windows-2022,   r: 'release'}
           - {os: ubuntu-latest,   r: 'devel', http-user-agent: 'release'}
           - {os: ubuntu-latest,   r: 'release'}
           - {os: ubuntu-latest,   r: 'oldrel-1'}
@@ -38,9 +40,14 @@ jobs:
         with:
           r-version: ${{ matrix.config.r }}
           http-user-agent: ${{ matrix.config.http-user-agent }}
+          use-public-rspm: true
 
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
+          # Instala o pak via install.packages() (binario do CRAN) em vez do
+          # binario do GitHub, que corrompia a heap no Windows
+          # (exit code 0xC0000374 / -1073740940).
+          pak-version: repo
           extra-packages: any::rcmdcheck
           needs: check
 

@@ -1,15 +1,19 @@
 #' Kulldorff's Circular Spatial Scan Statistic
 #'
 #' Performs Kulldorff's circular spatial scan statistic for detecting
-#' spatial clusters. Inputs are passed as parallel vectors with one entry
-#' per region (cases must already be aggregated to the region level).
+#' spatial clusters. Inputs are supplied through a single \code{data}
+#' data.frame with one row per region (cases must already be aggregated to
+#' the region level); the relevant columns are referenced by name.
 #'
-#' @param cases Numeric vector of length \eqn{n} (one entry per region):
-#'   total cases in each region.
-#' @param population Numeric vector of length \eqn{n}: population (or
+#' @param data A \code{data.frame} with one row per region. The
+#'   \code{cases}, \code{population}, \code{region_id}, \code{x} and \code{y}
+#'   arguments name columns of this data.frame.
+#' @param cases Column of \code{data} giving the total cases in each region.
+#'   Given as an unquoted column name (a string or expression also works).
+#' @param population Column of \code{data} giving the population (or
 #'   denominator) of each region.
-#' @param region_id Vector of region identifiers, length \eqn{n}.
-#' @param x,y Numeric vectors of region centroid coordinates, length \eqn{n}.
+#' @param region_id Column of \code{data} giving the region identifier.
+#' @param x,y Columns of \code{data} giving the region centroid coordinates.
 #' @param max_pop_pct Numeric. Default \code{0.5}.
 #' @param nsim Integer. Number of MC simulations. Default \code{999}.
 #' @param alpha Numeric. Significance level. Default \code{0.05}.
@@ -36,23 +40,43 @@
 #' @examples
 #' set.seed(42)
 #' n <- 20
-#' cases <- rpois(n, lambda = 10)
-#' cases[1:5] <- rpois(5, lambda = 30)
+#' regions <- data.frame(
+#'   region_id  = 1:n,
+#'   cases      = rpois(n, lambda = 10),
+#'   population = rep(1000, n),
+#'   x          = runif(n, 0, 10),
+#'   y          = runif(n, 0, 10)
+#' )
+#' regions$cases[1:5] <- rpois(5, lambda = 30)
 #'
 #' result <- circular_scan(
+#'   regions,
 #'   cases       = cases,
-#'   population  = rep(1000, n),
-#'   region_id   = 1:n,
-#'   x           = runif(n, 0, 10),
-#'   y           = runif(n, 0, 10),
+#'   population  = population,
+#'   region_id   = region_id,
+#'   x           = x,
+#'   y           = y,
 #'   nsim        = 99
 #' )
 #' print(result)
-circular_scan <- function(cases, population, region_id, x, y,
+circular_scan <- function(data, cases, population, region_id, x, y,
                           max_pop_pct = 0.5, nsim = 999L,
                           alpha = 0.05, n_secondary = 1000L,
                           model = c("poisson", "binomial"),
                           seed = NULL, n_cores = 1L) {
+
+  ## --- resolve data/column inputs (substitutive interface, treeSS >= 0.2.0) ---
+  if (missing(data)) {
+    stop("`data` is required: a data.frame with one row per region.",
+         call. = FALSE)
+  }
+  data <- as.data.frame(data)
+  .env <- parent.frame()
+  cases      <- .resolve_col(substitute(cases),      data, .env, "cases")
+  population <- .resolve_col(substitute(population),  data, .env, "population")
+  region_id  <- .resolve_col(substitute(region_id),   data, .env, "region_id")
+  x          <- .resolve_col(substitute(x),           data, .env, "x")
+  y          <- .resolve_col(substitute(y),           data, .env, "y")
 
   model <- match.arg(model)
   model_int <- if (model == "binomial") 1L else 0L

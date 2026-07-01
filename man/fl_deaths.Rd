@@ -44,7 +44,8 @@ centroids:
                     cases     = deaths)
   # Add x, y from a centroids table
   data <- merge(data, centroids, by = "county_fips")
-  treespatial_scan(data, fl_tree, ...)
+  treespatial_scan(data, cases, population, region_id, x, y, node_id,
+                   tree = fl_tree, ...)
 }
 
 County polygons and centroids can be obtained via

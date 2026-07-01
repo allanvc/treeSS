@@ -16,26 +16,30 @@
 #' fresh, unconservative p-value for each secondary cluster, conditional
 #' on the prior detections.
 #'
-#' Dispatch on the supplied arguments selects one of three scan types:
+#' Inputs are supplied through a single \code{data} data.frame; the
+#' relevant columns are referenced by name. Which columns are supplied
+#' selects one of three scan types:
 #' \itemize{
 #'   \item tree-spatial: all of \code{cases}, \code{population},
 #'         \code{region_id}, \code{x}, \code{y}, \code{node_id},
-#'         \code{tree} are required;
+#'         \code{tree} are required (\code{data} in long format, one row
+#'         per (region, leaf));
 #'   \item circular: \code{cases}, \code{population}, \code{region_id},
-#'         \code{x}, \code{y} (no \code{node_id} / \code{tree});
-#'   \item tree-only: \code{cases}, \code{population}, \code{tree}
-#'         (no spatial inputs). \code{buffer_size} is ignored for the
-#'         tree-only case.
+#'         \code{x}, \code{y} (no \code{node_id} / \code{tree};
+#'         one row per region);
+#'   \item tree-only: \code{cases}, \code{population}, \code{node_id},
+#'         \code{tree} (no spatial inputs). \code{buffer_size} is ignored
+#'         for the tree-only case.
 #' }
 #'
-#' @param cases Numeric vector. For tree-spatial scan: one entry per
-#'   (region, leaf) row. For circular: one entry per region. For
-#'   tree-only: one entry per leaf.
-#' @param population Numeric vector parallel to \code{cases}.
-#' @param region_id,x,y Vectors parallel to \code{cases} (omit for
-#'   tree-only scan).
-#' @param node_id Vector parallel to \code{cases} (omit for circular and
-#'   tree-only scans).
+#' @param data A \code{data.frame} whose columns are named by the
+#'   \code{cases}, \code{population} and (depending on scan type)
+#'   \code{region_id}, \code{x}, \code{y}, \code{node_id} arguments.
+#' @param cases Column of \code{data} giving case counts. Given as an
+#'   unquoted column name (a string or expression also works).
+#' @param population Column of \code{data} giving the denominator.
+#' @param region_id,x,y Columns of \code{data} (omit for tree-only scan).
+#' @param node_id Column of \code{data} (omit for circular scan).
 #' @param tree Tree as a 2-column data.frame
 #'   (\code{node_id, parent_id}), or use
 #'   \code{tree_node_id}/\code{tree_parent_id}. Omit for circular scan.
@@ -106,18 +110,19 @@
 #' \donttest{
 #' data(london_collisions); data(london_tree)
 #' result <- sequential_scan(
-#'   cases       = london_collisions$cases,
-#'   population  = london_collisions$population,
-#'   region_id   = london_collisions$region_id,
-#'   x           = london_collisions$x,
-#'   y           = london_collisions$y,
-#'   node_id     = london_collisions$node_id,
+#'   london_collisions,
+#'   cases       = cases,
+#'   population  = population,
+#'   region_id   = region_id,
+#'   x           = x,
+#'   y           = y,
+#'   node_id     = node_id,
 #'   tree        = london_tree,
 #'   max_iter = 3, nsim = 99, seed = 42
 #' )
 #' print(result)
 #' }
-sequential_scan <- function(cases = NULL, population = NULL,
+sequential_scan <- function(data, cases, population,
                             region_id = NULL, x = NULL, y = NULL,
                             node_id = NULL,
                             tree = NULL,
@@ -128,6 +133,25 @@ sequential_scan <- function(cases = NULL, population = NULL,
                             model = c("poisson", "binomial"),
                             seed = NULL, verbose = TRUE,
                             n_cores = 1L) {
+
+  ## --- resolve data/column inputs (substitutive interface, treeSS >= 0.2.0) ---
+  if (missing(data)) {
+    stop("`data` is required: a data.frame whose columns are named by the ",
+         "`cases`, `population` (and scan-type-dependent) arguments.",
+         call. = FALSE)
+  }
+  data <- as.data.frame(data)
+  .env <- parent.frame()
+  q_region <- if (missing(region_id)) NULL else substitute(region_id)
+  q_x      <- if (missing(x))         NULL else substitute(x)
+  q_y      <- if (missing(y))         NULL else substitute(y)
+  q_node   <- if (missing(node_id))   NULL else substitute(node_id)
+  cases      <- .resolve_col(substitute(cases),      data, .env, "cases")
+  population <- .resolve_col(substitute(population),  data, .env, "population")
+  region_id  <- .resolve_col(q_region, data, .env, "region_id")
+  x          <- .resolve_col(q_x,      data, .env, "x")
+  y          <- .resolve_col(q_y,      data, .env, "y")
+  node_id    <- .resolve_col(q_node,   data, .env, "node_id")
 
   model <- match.arg(model)
 
@@ -141,14 +165,14 @@ sequential_scan <- function(cases = NULL, population = NULL,
     tree <- .normalize_tree(tree, tree_node_id, tree_parent_id)
   } else if (!has_tree && has_geo) {
     scan_type <- "circular"
-  } else if (has_tree && !has_node && !has_geo) {
+  } else if (has_tree && has_node && !has_geo) {
     scan_type <- "tree"
     tree <- .normalize_tree(tree, tree_node_id, tree_parent_id)
   } else {
-    stop("Inputs are not consistent. Provide:\n",
-         "  tree-spatial: cases, population, region_id, x, y, node_id, tree\n",
+    stop("Inputs are not consistent. Provide columns of `data` for:\n",
+         "  tree-spatial: cases, population, region_id, x, y, node_id (+ tree)\n",
          "  circular:     cases, population, region_id, x, y\n",
-         "  tree-only:    cases, population, tree (no region_id/x/y/node_id)",
+         "  tree-only:    cases, population, node_id (+ tree; no region_id/x/y)",
          call. = FALSE)
   }
 
@@ -170,10 +194,26 @@ sequential_scan <- function(cases = NULL, population = NULL,
   # iteration by dropping rows that belong to the union of detected
   # cluster regions (plus buffer). For the tree-only scan we drop leaves
   # instead.
-  cur_cases      <- as.numeric(cases)
-  cur_population <- as.numeric(population)
-
-  if (scan_type != "tree") {
+  if (scan_type == "tree") {
+    # Re-key the leaf rows of `data` onto the canonical leaf order of the
+    # tree (cases summed within leaf; denominator from first occurrence).
+    leaves0 <- as.character(.get_leaves(tree))
+    nid0    <- as.character(node_id)
+    unknown0 <- setdiff(unique(nid0), leaves0)
+    if (length(unknown0) > 0) {
+      stop("'node_id' contains values that are not leaves of the tree: ",
+           paste(utils::head(unknown0, 5), collapse = ", "),
+           if (length(unknown0) > 5) ", ..." else "", ".", call. = FALSE)
+    }
+    fac0 <- factor(nid0, levels = leaves0)
+    cur_cases <- as.numeric(tapply(as.numeric(cases), fac0, sum))
+    cur_cases[is.na(cur_cases)] <- 0
+    cur_population <- as.numeric(tapply(as.numeric(population), fac0,
+                                        function(z) z[1L]))
+    cur_population[is.na(cur_population)] <- 0
+  } else {
+    cur_cases      <- as.numeric(cases)
+    cur_population <- as.numeric(population)
     cur_region_id <- region_id
     cur_x         <- as.numeric(x)
     cur_y         <- as.numeric(y)
@@ -200,15 +240,24 @@ sequential_scan <- function(cases = NULL, population = NULL,
       break
     }
 
-    # Run the appropriate scan on the current reduced data
+    # Run the appropriate scan on the current reduced data. The public
+    # scans now take a `data.frame`; we assemble one from the current
+    # working vectors and name its columns (string column names are
+    # accepted by the data/column interface).
     if (scan_type == "treespatial") {
+      .df <- data.frame(
+        cases      = cur_cases,
+        population = cur_population,
+        region_id  = cur_region_id,
+        x          = cur_x,
+        y          = cur_y,
+        node_id    = cur_node_id,
+        stringsAsFactors = FALSE
+      )
       res <- treespatial_scan(
-        cases       = cur_cases,
-        population  = cur_population,
-        region_id   = cur_region_id,
-        x           = cur_x,
-        y           = cur_y,
-        node_id     = cur_node_id,
+        .df,
+        cases = "cases", population = "population",
+        region_id = "region_id", x = "x", y = "y", node_id = "node_id",
         tree        = tree,
         max_pop_pct = max_pop_pct,
         nsim        = nsim, alpha = alpha,
@@ -216,25 +265,39 @@ sequential_scan <- function(cases = NULL, population = NULL,
         seed        = iter_seed, n_cores = n_cores
       )
     } else if (scan_type == "circular") {
+      .df <- data.frame(
+        cases      = cur_cases,
+        population = cur_population,
+        region_id  = cur_region_id,
+        x          = cur_x,
+        y          = cur_y,
+        stringsAsFactors = FALSE
+      )
       res <- circular_scan(
-        cases       = cur_cases,
-        population  = cur_population,
-        region_id   = cur_region_id,
-        x           = cur_x,
-        y           = cur_y,
+        .df,
+        cases = "cases", population = "population",
+        region_id = "region_id", x = "x", y = "y",
         max_pop_pct = max_pop_pct,
         nsim        = nsim, alpha = alpha,
         model       = model,
         seed        = iter_seed, n_cores = n_cores
       )
     } else {
-      res <- tree_scan(
-        tree       = tree,
+      # tree-only: cur_cases / cur_population are aligned to the current
+      # tree's leaf order, so reconstruct node_id from the leaves.
+      .df <- data.frame(
         cases      = cur_cases,
         population = cur_population,
-        nsim       = nsim, alpha = alpha,
-        model      = model,
-        seed       = iter_seed, n_cores = n_cores
+        node_id    = as.character(.get_leaves(tree)),
+        stringsAsFactors = FALSE
+      )
+      res <- tree_scan(
+        .df,
+        cases = "cases", node_id = "node_id",
+        tree = tree, population = "population",
+        nsim = nsim, alpha = alpha,
+        model = model,
+        seed = iter_seed, n_cores = n_cores
       )
     }
 

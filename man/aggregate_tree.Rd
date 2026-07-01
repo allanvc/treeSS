@@ -5,6 +5,7 @@
 \title{Aggregate Case Counts from Leaves to All Nodes in a Hierarchical Tree}
 \usage{
 aggregate_tree(
+  data,
   cases,
   region_id,
   node_id,
@@ -14,11 +15,16 @@ aggregate_tree(
 )
 }
 \arguments{
-\item{cases}{Numeric vector of length \eqn{n}: case counts.}
+\item{data}{A \code{data.frame} in long format with one row per
+(region, leaf) observation. The \code{cases}, \code{region_id} and
+\code{node_id} arguments name columns of this data.frame.}
 
-\item{region_id}{Vector of region identifiers, length \eqn{n}.}
+\item{cases}{Column of \code{data} giving case counts. Given as an
+unquoted column name (a string or expression also works).}
 
-\item{node_id}{Vector of leaf identifiers, length \eqn{n}.}
+\item{region_id}{Column of \code{data} giving the region identifier.}
+
+\item{node_id}{Column of \code{data} giving the leaf identifier.}
 
 \item{tree}{A \code{data.frame} with columns \code{node_id} and
 \code{parent_id}. As an alternative, pass \code{tree_node_id} and
@@ -32,28 +38,29 @@ A matrix of dimensions \eqn{m \times k} (nodes x regions), with
   rows ordered by \code{tree$node_id} and columns by region.
 }
 \description{
-Given case counts at the leaf level (as parallel vectors) and a tree,
-aggregates case counts upward from child nodes to parent nodes,
-producing a complete case matrix indexed by all nodes (rows) and
-regions (columns).
+Given case counts at the leaf level (supplied as columns of a long-format
+\code{data} data.frame) and a tree, aggregates case counts upward from
+child nodes to parent nodes, producing a complete case matrix indexed by
+all nodes (rows) and regions (columns).
 }
 \details{
 This function is exposed for inspection and pedagogical use; the scan
 functions call it internally on the matrix they build from your input
-vectors.
+data.
 }
 \examples{
 tree <- data.frame(
   node_id   = c(1, 2, 3, 4, 5, 6, 7),
   parent_id = c(NA, 1, 1, 2, 2, 3, 3)
 )
-# Leaves are 4, 5, 6, 7
-aggregate_tree(
+# Leaves are 4, 5, 6, 7; long-format data.frame
+dat <- data.frame(
   cases     = c(10, 5, 3, 8,  2, 7, 4, 1,  6, 3, 9, 2),
   region_id = rep(1:3, each = 4),
-  node_id   = rep(c(4, 5, 6, 7), times = 3),
-  tree      = tree
+  node_id   = rep(c(4, 5, 6, 7), times = 3)
 )
+aggregate_tree(dat, cases = cases, region_id = region_id,
+               node_id = node_id, tree = tree)
 }
 \references{
 Cancado, A. L. F., Oliveira, G. S., Quadros, A. V. C., & Duczmal, L.

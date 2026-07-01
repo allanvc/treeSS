@@ -3,12 +3,12 @@ test_that("aggregate_tree sums correctly", {
     node_id   = c(1, 2, 3, 4, 5, 6, 7),
     parent_id = c(NA, 1, 1, 2, 2, 3, 3)
   )
-  full <- aggregate_tree(
+  dat <- data.frame(
     cases     = c(10, 5, 3, 8,  2, 7, 4, 1,  6, 3, 9, 2),
     region_id = rep(1:3, each = 4),
-    node_id   = rep(c(4, 5, 6, 7), times = 3),
-    tree      = tree
+    node_id   = rep(c(4, 5, 6, 7), times = 3)
   )
+  full <- aggregate_tree(dat, cases, region_id, node_id, tree = tree)
 
   expect_equal(nrow(full), 7)
   expect_equal(ncol(full), 3)
@@ -25,29 +25,26 @@ test_that("aggregate_tree sums correctly", {
   expect_equal(unname(full[root, ]), per_region)
 })
 
-test_that("aggregate_tree errors on length mismatch", {
+test_that("aggregate_tree errors on node_id that is not a leaf", {
   tree <- data.frame(node_id = c(1, 2, 3), parent_id = c(NA, 1, 1))
+  dat <- data.frame(cases = 1:3, region_id = 1:3, node_id = c(2, 3, 99))
   expect_error(
-    aggregate_tree(cases = 1:5, region_id = 1:5, node_id = rep(2, 3),
-                   tree = tree),
-    "same length"
+    aggregate_tree(dat, cases, region_id, node_id, tree = tree),
+    "not leaves"
   )
 })
 
 test_that("aggregate_tree accepts tree_node_id/tree_parent_id form", {
-  res1 <- aggregate_tree(
+  dat <- data.frame(
     cases     = c(10, 5, 3, 8),
     region_id = rep(1:2, each = 2),
-    node_id   = c(2, 3, 2, 3),
-    tree      = data.frame(node_id = c(1, 2, 3),
-                            parent_id = c(NA, 1, 1))
+    node_id   = c(2, 3, 2, 3)
   )
-  res2 <- aggregate_tree(
-    cases     = c(10, 5, 3, 8),
-    region_id = rep(1:2, each = 2),
-    node_id   = c(2, 3, 2, 3),
-    tree_node_id = c(1, 2, 3),
-    tree_parent_id = c(NA, 1, 1)
-  )
+  res1 <- aggregate_tree(dat, cases, region_id, node_id,
+                         tree = data.frame(node_id = c(1, 2, 3),
+                                           parent_id = c(NA, 1, 1)))
+  res2 <- aggregate_tree(dat, cases, region_id, node_id,
+                         tree_node_id = c(1, 2, 3),
+                         tree_parent_id = c(NA, 1, 1))
   expect_equal(res1, res2)
 })
