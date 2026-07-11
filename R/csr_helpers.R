@@ -5,19 +5,18 @@
   # Convert zones list to CSR (compressed sparse row) format for C++
   # Returns: zone_region_idx (0-based), zone_ptr, zone_pop
   n_zones <- length(zones)
-  all_idx <- integer(0)
-  zone_ptr <- integer(n_zones + 1)
-  zone_pop <- numeric(n_zones)
 
-  ptr <- 0L
-  for (zi in seq_len(n_zones)) {
-    zone_ptr[zi] <- ptr
-    idx <- zones[[zi]]$region_idx - 1L  # 0-based for C++
-    all_idx <- c(all_idx, idx)
-    ptr <- ptr + length(idx)
-    zone_pop[zi] <- zones[[zi]]$population
+  lens <- vapply(zones, function(z) length(z$region_idx), integer(1))
+  zone_ptr <- c(0L, cumsum(lens))
+
+  if (n_zones > 0L && sum(lens) > 0L) {
+    all_idx <- unlist(lapply(zones, `[[`, "region_idx"),
+                      use.names = FALSE) - 1L  # 0-based for C++
+  } else {
+    all_idx <- integer(0)
   }
-  zone_ptr[n_zones + 1] <- ptr
+
+  zone_pop <- vapply(zones, function(z) as.numeric(z$population), numeric(1))
 
   list(
     zone_region_idx = as.integer(all_idx),
@@ -32,22 +31,28 @@
   # Returns: children_idx (0-based), children_ptr
   all_nodes <- tree$node_id
   n_nodes <- length(all_nodes)
-  all_idx <- integer(0)
-  children_ptr <- integer(n_nodes + 1)
 
-  ptr <- 0L
-  for (i in seq_len(n_nodes)) {
-    children_ptr[i] <- ptr
-    ch <- which(!is.na(tree$parent_id) & tree$parent_id == all_nodes[i])
-    if (length(ch) > 0) {
-      all_idx <- c(all_idx, ch - 1L)  # 0-based for C++
-      ptr <- ptr + length(ch)
-    }
+  # Row position of each node's parent within all_nodes (NA for the root and
+  # for any parent_id not present in node_id, matching the previous
+  # behaviour of dropping such rows).
+  parent_pos <- match(tree$parent_id, all_nodes)
+  child_rows <- which(!is.na(parent_pos))
+
+  if (length(child_rows) > 0L) {
+    # Group children by parent position; within a parent, keep increasing
+    # row order (same order the previous per-node which() scan produced).
+    ord <- order(parent_pos[child_rows], child_rows)
+    children_sorted <- child_rows[ord]
+    counts <- tabulate(parent_pos[child_rows], nbins = n_nodes)
+  } else {
+    children_sorted <- integer(0)
+    counts <- integer(n_nodes)
   }
-  children_ptr[n_nodes + 1] <- ptr
+
+  children_ptr <- c(0L, cumsum(counts))
 
   list(
-    children_idx = as.integer(all_idx),
+    children_idx = as.integer(children_sorted - 1L),  # 0-based for C++
     children_ptr = as.integer(children_ptr)
   )
 }

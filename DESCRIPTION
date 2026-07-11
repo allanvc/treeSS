@@ -1,7 +1,7 @@
 Package: treeSS
 Type: Package
 Title: Tree-Spatial Scan Statistic for Cluster Detection
-Version: 0.2.4
+Version: 0.2.5
 Authors@R: c(
     person("Allan", "Quadros", email = "allanvcq@gmail.com",
            role = c("aut", "cre"),

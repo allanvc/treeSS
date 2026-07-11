@@ -1,3 +1,36 @@
+# treeSS 0.2.5
+
+## Performance
+
+* Zone construction is dramatically faster for larger study areas.
+  `build_zones()` previously grew each zone's membership vector and the
+  zones list incrementally inside a double loop, causing roughly cubic
+  cost in the number of regions; it now precomputes each center's
+  inclusion sequence in a single pass and materializes all zones as
+  prefix subsets into a preallocated list. On a 300-region study area the
+  zone-construction step drops from about 19 s to about 0.14 s
+  (~130x), and a full `circular_scan()` at `nsim = 999` from about 20 s
+  to about 1.3 s (~15x), measured single-threaded.
+
+* `.zones_to_csr()` no longer concatenates the zone membership index
+  incrementally (which was quadratic in the total number of
+  zone-region memberships); it now computes pointers with `cumsum()`
+  and flattens memberships with a single `unlist()`.
+
+* `.tree_to_csr_children()` replaces the per-node `which()` scan
+  (quadratic in the number of tree nodes) with a vectorized
+  `match()`/`order()`/`tabulate()` grouping, which is effectively linear.
+  This reduces preprocessing time for large classification trees such as
+  the 2841-node Chicago crime taxonomy.
+
+* None of these changes affect results: the zone family (including the
+  population-cap skip behaviour), the CSR structures passed to the C++
+  backend, and therefore all clusters, log-likelihood ratios, and Monte
+  Carlo p-values are bit-for-bit identical to 0.2.4 for the same inputs
+  and seeds. Verified by snapshot comparison on the Rio de Janeiro,
+  Chicago, and London analyses and by `identical()` checks of the old and
+  new constructors on synthetic inputs, including cap-skip edge cases.
+
 # treeSS 0.2.4
 
 ## Documentation

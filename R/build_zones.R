@@ -53,28 +53,56 @@ build_zones <- function(regions, max_pop = NULL) {
   coords <- as.matrix(regions[, c("x", "y")])
   dist_mat <- as.matrix(stats::dist(coords, method = "euclidean"))
 
-  zones <- list()
-  zone_id <- 1L
+  pop <- regions$population
+
+  ## Pass 1 -- for each center, walk the regions in increasing distance and
+  ## record the subsequence that fits under the population cap. A region that
+  ## would exceed the cap is skipped and the walk continues (identical
+  ## semantics to previous versions). Only scalar bookkeeping happens inside
+  ## the loop; no vectors are grown incrementally.
+  included <- vector("list", n)   # per center: region indices, inclusion order
+  cumpops  <- vector("list", n)   # per center: cumulative population at each k
+  n_inc    <- integer(n)          # per center: number of zones (= prefixes)
+  buf_idx  <- integer(n)
+  buf_pop  <- numeric(n)
 
   for (center in seq_len(n)) {
     ordered_idx <- order(dist_mat[center, ])
-    zone_regions <- integer(0)
-    zone_pop <- 0
+    k <- 0L
+    cum <- 0
 
     for (i in ordered_idx) {
-      new_pop <- zone_pop + regions$population[i]
-
+      new_pop <- cum + pop[i]
       if (new_pop <= max_pop) {
-        zone_regions <- c(zone_regions, i)
-        zone_pop <- new_pop
-
-        zones[[zone_id]] <- list(
-          center = center,
-          region_idx = zone_regions,
-          population = zone_pop
-        )
-        zone_id <- zone_id + 1L
+        k <- k + 1L
+        buf_idx[k] <- i
+        buf_pop[k] <- new_pop
+        cum <- new_pop
       }
+    }
+
+    n_inc[center]    <- k
+    included[[center]] <- buf_idx[seq_len(k)]
+    cumpops[[center]]  <- buf_pop[seq_len(k)]
+  }
+
+  ## Pass 2 -- each zone is a prefix of its center's inclusion sequence. The
+  ## output list is preallocated at its final length and each zone's members
+  ## are extracted with a single C-level subset, so construction cost is
+  ## proportional to the total number of (zone, region) memberships.
+  zones <- vector("list", sum(n_inc))
+  zone_id <- 0L
+
+  for (center in seq_len(n)) {
+    inc <- included[[center]]
+    cp  <- cumpops[[center]]
+    for (k in seq_len(n_inc[center])) {
+      zone_id <- zone_id + 1L
+      zones[[zone_id]] <- list(
+        center = center,
+        region_idx = inc[seq_len(k)],
+        population = cp[k]
+      )
     }
   }
 
