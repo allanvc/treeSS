@@ -75,8 +75,6 @@ Useful links:
 Authors:
 \itemize{
   \item Andre L. F. Cançado (\href{https://orcid.org/0000-0002-7019-8521}{ORCID})
-  \item Geiziane S. Oliveira
-  \item Luiz H. Duczmal
 }
 
 }

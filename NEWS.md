@@ -1,3 +1,9 @@
+# treeSS 0.2.6
+
+* Updated package authorship in `DESCRIPTION`: the package code authors are
+  now Allan Quadros and Andre L. F. Cançado. The citation for the underlying
+  methodology paper (Cançado, Oliveira, Quadros & Duczmal, 2025) is unchanged.
+
 # treeSS 0.2.5
 
 ## Performance
