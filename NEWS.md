@@ -1,3 +1,10 @@
+# treeSS 0.2.6-1
+
+## Documentation
+
+* `README.md` now also carries the CRAN downloads badges (monthly and
+  grand-total downloads from the RStudio CRAN mirror, via cranlogs).
+
 # treeSS 0.2.6
 
 * Updated package authorship in `DESCRIPTION`: the package code authors are

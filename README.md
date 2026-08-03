@@ -8,6 +8,8 @@
 [![Codecov test coverage](https://codecov.io/gh/allanvc/treeSS/graph/badge.svg)](https://app.codecov.io/gh/allanvc/treeSS)
 [![Lifecycle: stable](https://img.shields.io/badge/lifecycle-stable-brightgreen.svg)](https://lifecycle.r-lib.org/articles/stages.html#stable)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+[![Downloads from the RStudio CRAN mirror](https://cranlogs.r-pkg.org/badges/treeSS)](https://cran.r-project.org/package=treeSS)
+[![Downloads from the RStudio CRAN mirror](https://cranlogs.r-pkg.org/badges/grand-total/treeSS)](https://cran.r-project.org/package=treeSS)
 <!-- badges: end -->
 
 Implements the tree-spatial scan statistic (Cançado et al., 2025), which
