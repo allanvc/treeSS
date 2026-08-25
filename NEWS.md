@@ -1,3 +1,19 @@
+# treeSS 0.2.9
+
+## New features
+
+* New `plot()` methods for scan results. `plot.treess()` draws the
+  detected clusters of `circular_scan()`, `treespatial_scan()`, and
+  `sequential_scan()` results: with no polygon layer it uses base
+  graphics on the region centroids stored in the result; given an `sf`
+  layer (`map`, `map_id`, and optionally a two-column `key` translating
+  `region_id` into the map's identifier) it returns a faceted
+  `ggplot2` choropleth, one panel per cluster (`n_clusters`) or per
+  iteration. `plot.tree_scan()` draws a dot chart of the top tree cuts.
+  Both are thin wrappers around `get_cluster_regions()`, which remains
+  the entry point for other mapping toolkits. `ggplot2` is added to
+  `Suggests`.
+
 # treeSS 0.2.8
 
 ## Breaking change (relative to unreleased 0.2.7)

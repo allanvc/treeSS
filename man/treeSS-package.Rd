@@ -74,6 +74,7 @@ Useful links:
 
 Authors:
 \itemize{
+  \item Allan Quadros \email{allanvcq@gmail.com} (\href{https://orcid.org/0000-0003-3250-5380}{ORCID})
   \item Andre L. F. Cançado (\href{https://orcid.org/0000-0002-7019-8521}{ORCID})
 }
 
