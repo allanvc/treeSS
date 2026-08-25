@@ -457,7 +457,7 @@ sequential_scan <- function(data, cases, population,
     n_iter      = length(clusters_rows),
     scan_type   = scan_type
   )
-  class(out) <- "sequential_scan"
+  class(out) <- c("sequential_scan", "treess")
   out
 }
 

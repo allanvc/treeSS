@@ -64,31 +64,50 @@
 #' filter_clusters(result)
 #'
 #' @export
-filter_clusters <- function(result, alpha = NULL) {
+filter_clusters <- function(result, alpha = NULL, ...) {
+  UseMethod("filter_clusters")
+}
 
-  is_treespatial <- inherits(result, "treespatial_scan")
-  is_circular <- inherits(result, "circular_scan")
-  is_tree <- inherits(result, "tree_scan")
+#' @rdname filter_clusters
+#' @param ... Further arguments passed to methods (currently unused).
+#' @export
+filter_clusters.default <- function(result, alpha = NULL, ...) {
+  stop("'result' must be of class 'treespatial_scan', 'circular_scan', ",
+       "or 'tree_scan'.", call. = FALSE)
+}
 
-  if (!is_treespatial && !is_circular && !is_tree) {
-    stop("'result' must be of class 'treespatial_scan', 'circular_scan', ",
-         "or 'tree_scan'.", call. = FALSE)
+#' @rdname filter_clusters
+#' @export
+filter_clusters.tree_scan <- function(result, alpha = NULL, ...) {
+  if (is.null(alpha)) alpha <- result$alpha
+  # tree_scan: use all_cuts (p-values already computed)
+  sig <- result$all_cuts[result$all_cuts$pvalue < alpha, ]
+  if (nrow(sig) == 0) {
+    message("No significant clusters found at alpha = ", alpha, ".")
+    return(data.frame())
   }
+  sig <- sig[order(-sig$llr), ]
+  .filter_tree_only(sig, result$tree)
+}
 
+#' @rdname filter_clusters
+#' @export
+filter_clusters.circular_scan <- function(result, alpha = NULL, ...) {
+  .filter_significant_pairs(result, alpha, circular = TRUE)
+}
+
+#' @rdname filter_clusters
+#' @export
+filter_clusters.treespatial_scan <- function(result, alpha = NULL, ...) {
+  .filter_significant_pairs(result, alpha, circular = FALSE)
+}
+
+# Shared logic for circular_scan / treespatial_scan: attach Monte Carlo
+# p-values to the secondary candidates, keep the significant ones, and
+# apply the class-specific overlap criterion.
+.filter_significant_pairs <- function(result, alpha, circular) {
   if (is.null(alpha)) alpha <- result$alpha
 
-  # --- tree_scan: use all_cuts (p-values already computed) ---
-  if (is_tree) {
-    sig <- result$all_cuts[result$all_cuts$pvalue < alpha, ]
-    if (nrow(sig) == 0) {
-      message("No significant clusters found at alpha = ", alpha, ".")
-      return(data.frame())
-    }
-    sig <- sig[order(-sig$llr), ]
-    return(.filter_tree_only(sig, result$tree))
-  }
-
-  # --- circular_scan / treespatial_scan: use secondary_clusters ---
   all_pairs <- result$secondary_clusters
   if (is.null(all_pairs) || nrow(all_pairs) == 0) {
     message("No secondary clusters to filter.")
@@ -122,7 +141,7 @@ filter_clusters <- function(result, alpha = NULL) {
     }
   }
 
-  if (is_circular) {
+  if (circular) {
     .filter_circular(sig_pairs, pair_regions)
   } else {
     .filter_treespatial(sig_pairs, pair_regions, result$tree)

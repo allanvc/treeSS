@@ -136,7 +136,17 @@ print.tree_scan <- function(x, max_show = 10L, ...) {
   cat("Tree-Based Scan Statistic\n")
   cat(paste(rep("-", 50), collapse = ""), "\n")
   cat("Total cases:", x$total_cases, "\n")
-  cat("Total population:", x$total_population, "\n")
+  # `population_supplied` was added in treeSS 0.2.7; when it is absent
+  # (objects created by older versions) we keep the legacy behaviour of
+  # always printing the total. When the user did not supply a
+  # `population` column, each leaf is weighted 1 and printing the leaf
+  # count as a "population" would be misleading.
+  if (is.null(x$population_supplied) || isTRUE(x$population_supplied)) {
+    cat("Total population:", x$total_population, "\n")
+  } else {
+    cat("Population: not supplied (each leaf weighted 1;",
+        x$total_population, "leaves)\n")
+  }
   cat("Number of nodes:", nrow(x$tree), "\n")
   cat("Monte Carlo simulations:", x$nsim, "\n\n")
 
@@ -153,8 +163,14 @@ print.tree_scan <- function(x, max_show = 10L, ...) {
   cat("\nSignificant cuts (alpha =", x$alpha, "):", nsig, "\n")
 
   if (nsig > 0) {
-    top <- head(x$significant_cuts, 10)
-    cat("\nTop significant cuts:\n")
+    n_top <- min(10L, nsig)
+    top <- head(x$significant_cuts, n_top)
+    if (nsig > n_top) {
+      cat("\nTop significant cuts (showing ", n_top, " of ", nsig,
+          "; see summary() or x$significant_cuts for all):\n", sep = "")
+    } else {
+      cat("\nSignificant cuts:\n")
+    }
     print(top, row.names = FALSE)
   }
 
@@ -304,11 +320,18 @@ print.sequential_scan <- function(x, max_show = 10L, ...) {
         nrow(x$clusters), "\n\n", sep = "")
     display <- x$clusters
     # Hide list-columns from the tabular print
+    hidden <- character(0)
     if (!isTRUE(max_show < 0L)) {
+      hidden <- intersect(c("region_ids", "leaf_ids"), names(display))
       display$region_ids <- NULL
       display$leaf_ids   <- NULL
     }
     print(display, row.names = FALSE)
+    if (length(hidden) > 0L) {
+      cat("(", paste(hidden, collapse = ", "),
+          " column(s) not shown; use summary() or",
+          " get_cluster_regions() for cluster composition)\n", sep = "")
+    }
   } else {
     cat("No clusters detected.\n")
   }

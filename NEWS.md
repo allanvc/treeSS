@@ -1,3 +1,59 @@
+# treeSS 0.2.8
+
+## Breaking change (relative to unreleased 0.2.7)
+
+* The common parent class of all scan results, introduced in 0.2.7 as
+  `"scan_result"`, is renamed to `"treess"` to avoid potential S3 class
+  collisions with other packages and to make the class provenance
+  explicit. Scan functions now return
+  `c("circular_scan", "treess")`, `c("tree_scan", "treess")`,
+  `c("treespatial_scan", "treess")`, and
+  `c("sequential_scan", "treess")`. The accessor generics
+  (`most_likely_cluster()`, `secondary_clusters()`, `pvalue()`) dispatch
+  on `"treess"`. Since 0.2.7 was never published on CRAN, no released
+  API is affected.
+
+# treeSS 0.2.7
+
+## New features
+
+* All scan results now inherit from a common parent class `"scan_result"`:
+  `circular_scan()`, `tree_scan()`, `treespatial_scan()`, and
+  `sequential_scan()` return objects of class
+  `c("<scan type>", "scan_result")`. Shared behaviour is implemented once
+  for the parent class and specialised only where the representation
+  differs.
+
+* New accessor generics so user code no longer needs to reach into the
+  internal list structure of result objects:
+  - `most_likely_cluster()` returns the most likely cluster (for
+    `sequential_scan`, the first-iteration cluster).
+  - `secondary_clusters()` returns the secondary-candidate table
+    (`significant_cuts` for `tree_scan`; iterations beyond the first for
+    `sequential_scan`).
+  - `pvalue()` returns the Monte Carlo p-value (a named per-iteration
+    vector for `sequential_scan`).
+
+* `filter_clusters()` is now an S3 generic with methods for
+  `treespatial_scan`, `circular_scan`, and `tree_scan` (plus an
+  informative `default` method). Behaviour and results are unchanged.
+
+## Improvements
+
+* `print.tree_scan()` no longer reports a misleading
+  `Total population` when no `population` column was supplied to
+  `tree_scan()`; it now states that each leaf is weighted 1 and reports
+  the leaf count. New `tree_scan` results carry a
+  `population_supplied` flag (objects from older versions keep the
+  legacy display).
+
+* `print.tree_scan()` now indicates explicitly when the significant-cuts
+  table is truncated ("showing k of n"), and points to `summary()` for
+  the full table.
+
+* `print.sequential_scan()` now notes when the `region_ids`/`leaf_ids`
+  composition columns are omitted from the tabular display.
+
 # treeSS 0.2.6-1
 
 ## Documentation

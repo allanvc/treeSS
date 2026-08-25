@@ -247,7 +247,7 @@ treespatial_scan <- function(data, cases, population, region_id, x, y, node_id,
     model = model
   )
 
-  class(result) <- "treespatial_scan"
+  class(result) <- c("treespatial_scan", "treess")
   result
 }
 

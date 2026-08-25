@@ -212,6 +212,6 @@ circular_scan <- function(data, cases, population, region_id, x, y,
     model = model
   )
 
-  class(result) <- "circular_scan"
+  class(result) <- c("circular_scan", "treess")
   result
 }

@@ -2,9 +2,21 @@
 % Please edit documentation in R/filter_clusters.R
 \name{filter_clusters}
 \alias{filter_clusters}
+\alias{filter_clusters.default}
+\alias{filter_clusters.tree_scan}
+\alias{filter_clusters.circular_scan}
+\alias{filter_clusters.treespatial_scan}
 \title{Filter Overlapping Secondary Clusters}
 \usage{
-filter_clusters(result, alpha = NULL)
+filter_clusters(result, alpha = NULL, ...)
+
+\method{filter_clusters}{default}(result, alpha = NULL, ...)
+
+\method{filter_clusters}{tree_scan}(result, alpha = NULL, ...)
+
+\method{filter_clusters}{circular_scan}(result, alpha = NULL, ...)
+
+\method{filter_clusters}{treespatial_scan}(result, alpha = NULL, ...)
 }
 \arguments{
 \item{result}{An object of class \code{"treespatial_scan"},
@@ -12,6 +24,8 @@ filter_clusters(result, alpha = NULL)
 
 \item{alpha}{Numeric. Significance level for filtering. Default is
 \code{NULL}, which uses the alpha from the original analysis.}
+
+\item{...}{Further arguments passed to methods (currently unused).}
 }
 \value{
 A \code{data.frame} of distinct significant clusters ordered by

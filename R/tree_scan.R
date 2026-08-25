@@ -221,10 +221,11 @@ tree_scan <- function(data, cases, node_id, tree = NULL, population = NULL,
     nsim = nsim,
     total_cases = C,
     total_population = N,
+    population_supplied = !is.null(.pop_in),
     tree = tree,
     simulated_llr = sim_llr
   )
 
-  class(result) <- "tree_scan"
+  class(result) <- c("tree_scan", "treess")
   result
 }
