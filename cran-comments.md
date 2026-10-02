@@ -1,8 +1,7 @@
 ## Test environments
 * local Ubuntu 22.04.5 LTS, R 4.4.1 (R CMD check --as-cran on the
   tarball built from a clean export, 2026-10-02)
-* win-builder, R-devel: to be run before submission
-* R-hub v2: linux, windows, macos (R-devel): to be run before submission
+* GitHub Actions (R-CMD-check workflow): ubuntu, windows, macos
 
 ## R CMD check results
 
