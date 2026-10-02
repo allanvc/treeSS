@@ -254,7 +254,7 @@ n_iter <- seq_fl$n_iter
 if (n_iter > 0) {
   # Cross-join the map polygons with every panel so all counties are
   # drawn in each iteration (those outside the analysis dataset show
-  # up NA-coloured rather than as an extra empty "NA" panel).
+  # up NA-colored rather than as an extra empty "NA" panel).
   panels <- unique(cr_seq$panel)
   cr_seq_keys <- unique(cr_seq[, c("county_fips", "cluster", "node_id",
                                     "llr", "pvalue", "panel")])

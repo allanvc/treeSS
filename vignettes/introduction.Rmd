@@ -19,10 +19,10 @@ knitr::opts_chunk$set(
 The **treeSS** package implements the tree-spatial scan statistic of
 Cançado, Oliveira, Quadros and Duczmal (2025), which detects clusters
 that are simultaneously anomalous in geographic space and on a
-hierarchical classification tree. It generalises Kulldorff's (1997)
+hierarchical classification tree. It generalizes Kulldorff's (1997)
 circular spatial scan by searching jointly over circular spatial
 zones $z$ and tree branches $g$, returning the (zone, branch) pair
-that maximises the likelihood ratio.
+that maximizes the likelihood ratio.
 
 The package targets epidemiological and surveillance applications
 where the events to be clustered (deaths, hospitalisations, crimes,
@@ -163,7 +163,7 @@ more than fifty significant cuts at the 5 % level on this dataset
 multiple-testing correction across tree branches and decide which to
 follow up. The joint scan returns a *single* most-likely $(z, g)$
 pair with one Monte Carlo $p$-value — the family-wise error rate is
-already controlled by the joint maximisation.
+already controlled by the joint maximization.
 
 ### Multiple distinct clusters (paper-faithful)
 
@@ -184,7 +184,7 @@ clusters are read directly from `result_rj$secondary_clusters` and
 filtered for distinctness in $O(k^2)$ time. The top filtered
 candidates correspond to the rows of Table 7 of Cançado et al. (2025).
 
-### Visualising the cluster
+### Visualizing the cluster
 
 `get_cluster_regions()` returns a tidy data.frame ready to merge with
 any polygon layer:
@@ -241,7 +241,7 @@ likelihood ratios of any other genuine cluster on the same dataset.
 For that situation the package also offers `sequential_scan()`,
 adapted from Zhang, Assunção and Kulldorff (2010). It detects the MLC,
 removes the MLC's regions (optionally with a buffer of nearest
-neighbours) from the dataset, and re-runs the scan on the reduced
+neighbors) from the dataset, and re-runs the scan on the reduced
 data with a *fresh* Monte Carlo simulation. The procedure iterates
 until the current MLC is no longer significant at the user-specified
 $\alpha$ level. Because each iteration's $p$-value is computed against

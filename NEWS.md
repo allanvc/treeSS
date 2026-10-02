@@ -36,8 +36,8 @@
 * All scan results now inherit from a common parent class `"scan_result"`:
   `circular_scan()`, `tree_scan()`, `treespatial_scan()`, and
   `sequential_scan()` return objects of class
-  `c("<scan type>", "scan_result")`. Shared behaviour is implemented once
-  for the parent class and specialised only where the representation
+  `c("<scan type>", "scan_result")`. Shared behavior is implemented once
+  for the parent class and specialized only where the representation
   differs.
 
 * New accessor generics so user code no longer needs to reach into the
@@ -52,7 +52,7 @@
 
 * `filter_clusters()` is now an S3 generic with methods for
   `treespatial_scan`, `circular_scan`, and `tree_scan` (plus an
-  informative `default` method). Behaviour and results are unchanged.
+  informative `default` method). Behavior and results are unchanged.
 
 ## Improvements
 
@@ -109,7 +109,7 @@
   the 2841-node Chicago crime taxonomy.
 
 * None of these changes affect results: the zone family (including the
-  population-cap skip behaviour), the CSR structures passed to the C++
+  population-cap skip behavior), the CSR structures passed to the C++
   backend, and therefore all clusters, log-likelihood ratios, and Monte
   Carlo p-values are bit-for-bit identical to 0.2.4 for the same inputs
   and seeds. Verified by snapshot comparison on the Rio de Janeiro,
@@ -205,7 +205,7 @@ treespatial_scan(...)`), and removes the repeated `df$column` boilerplate.
   The `tree` argument is unchanged (still a separate `node_id`/`parent_id`
   data.frame, or the `tree_node_id`/`tree_parent_id` vectors). The returned
   objects, their classes, and all `print`/`summary`/`filter_clusters()`/
-  `get_cluster_regions()` behaviour are unchanged.
+  `get_cluster_regions()` behavior are unchanged.
 
 ## Internal
 
@@ -249,7 +249,7 @@ used a native `std::mt19937` sampler over flat arrays.
 * **Serial and parallel timings are now directly comparable**, because the
   only difference between them is the number of threads, not the algorithm
   or the RNG.
-* **Behaviour change:** simulated `p`-values at `n_cores = 1` are no longer
+* **Behavior change:** simulated `p`-values at `n_cores = 1` are no longer
   bit-identical to the pre-0.1.50 serial path (which used R's `rmultinom`).
   Observed statistics, most-likely clusters, and secondary-cluster
   extraction are unaffected. Fix your `seed` to reproduce results.
@@ -307,13 +307,13 @@ cluster table. When the shapefile contained polygons not present in
 the analysis dataset (3 RJ municipalities missing from the
 DATASUS/IBGE 89-municipality subset, for instance), those polygons
 emerged with `panel = NA`, which `facet_wrap` rendered as an extra
-empty panel labelled "NA".
+empty panel labeled "NA".
 
 The examples now cross-join the polygon set with the panel labels
 first and then left-join the cluster information by `(id, panel)`,
 so every map polygon is drawn in every iteration panel — those that
-fall outside the analysis dataset get the `na.value` colour (a
-light grey), exactly as intended. No extra "NA" panel is produced.
+fall outside the analysis dataset get the `na.value` color (a
+light gray), exactly as intended. No extra "NA" panel is produced.
 
 The `london` example uses `leaflet` rather than `facet_wrap` and was
 not affected.
@@ -336,7 +336,7 @@ Rationale:
 * On real datasets with a concentrated signal (e.g. infant mortality
   in Rio de Janeiro: 622 tree nodes, 5358 zones), the top-K
   candidate pool was dominated by overlapping variants of a single
-  geographic neighbourhood, so the fast top-K disjoint-pair search
+  geographic neighborhood, so the fast top-K disjoint-pair search
   could not find a valid pair. The full-pool rescue path was too
   slow to be practical (timing out on `nsim = 999` with 4 cores).
 
@@ -363,7 +363,7 @@ The package now offers two clearly-bounded approaches:
 
 * `sequential_scan()` — sequential adjustment of Zhang, Assunção and
   Kulldorff (2010): detect MLC, remove its regions (with optional
-  buffer of nearest neighbours), re-run the scan on the reduced data
+  buffer of nearest neighbors), re-run the scan on the reduced data
   with a fresh Monte Carlo simulation; iterate until the current MLC
   is no longer significant. Each iteration's p-value is correct under
   the conditional argument in the paper, so no multiple-testing
@@ -387,7 +387,7 @@ choice driven by which type of shadowing the user wants to remove:
 * `sequential_scan()` (new) -- the sequential adjustment of Zhang,
   Assuncao and Kulldorff (2010), adapted to tree-spatial / circular /
   tree-only inputs. Detects the MLC, removes its regions (and an
-  optional `buffer_size` of nearest neighbours) from the dataset, and
+  optional `buffer_size` of nearest neighbors) from the dataset, and
   re-runs the scan on the reduced data with a fresh Monte Carlo
   simulation. Iterates until the MLC of the current reduced data is
   no longer significant or `max_iter` is reached. Each iteration's
@@ -439,7 +439,7 @@ choice driven by which type of shadowing the user wants to remove:
 ## Tests
 
 * New `tests/testthat/test-sequential-scan.R` covering structure,
-  the `max_iter` stopping rule, the buffer mechanism, behaviour
+  the `max_iter` stopping rule, the buffer mechanism, behavior
   under H0, and printing.
 * New `tests/testthat/test-multicluster-scan.R` covering structure,
   the stronger-versus-weaker ordering, region disjointness of the

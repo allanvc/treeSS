@@ -39,7 +39,7 @@ What you will see:
      population, region_id, x, y, node_id)` columns by joining the case
      table to a polygon layer fetched on demand.
   3. How to run `treespatial_scan()`, `filter_clusters()`, and
-     `sequential_scan()` on the assembled inputs and visualise the
+     `sequential_scan()` on the assembled inputs and visualize the
      results.
 
 The dataset is the CDC WONDER Compressed Mortality File 1999–2016
@@ -319,7 +319,7 @@ whichever comes first.
 
 ---
 
-## 8. Visualise the clusters
+## 8. Visualize the clusters
 
 `get_cluster_regions()` returns a tidy data.frame that can be
 joined to `fl_map` for plotting:
@@ -337,7 +337,7 @@ cr_seq <- merge(
 
 # Cross-join the polygon layer with every iteration panel so all
 # counties appear in every panel (those outside the analysis
-# dataset show as NA-coloured rather than as an extra empty panel)
+# dataset show as NA-colored rather than as an extra empty panel)
 panels       <- unique(cr_seq$panel)
 cr_seq_keys  <- unique(cr_seq[, c("county_fips", "cluster",
                                    "node_id", "llr", "pvalue",
@@ -390,7 +390,7 @@ the RJ vignette skips because `rj_mortality` arrives pre-assembled:
 After step 3, the rest of the analysis is identical to the RJ
 vignette: a single `treespatial_scan()` call, optional
 `filter_clusters()` or `sequential_scan()` post-processing, and
-visualisation via `get_cluster_regions()`.
+visualization via `get_cluster_regions()`.
 
 ---
 

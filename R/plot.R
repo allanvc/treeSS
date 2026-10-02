@@ -52,9 +52,9 @@ utils::globalVariables(".data")  # tidy-eval pronoun used inside aes()
 #'   larger values add the distinct secondary clusters retained by
 #'   \code{\link{filter_clusters}}, one panel each. Ignored for
 #'   \code{"sequential_scan"} objects, where every iteration is drawn.
-#' @param palette Character vector of fill colours, recycled over
-#'   clusters. The default is a four-colour qualitative palette.
-#' @param na_fill Fill colour for regions outside the cluster of a panel.
+#' @param palette Character vector of fill colors, recycled over
+#'   clusters. The default is a four-color qualitative palette.
+#' @param na_fill Fill color for regions outside the cluster of a panel.
 #' @param wrap Integer. Width at which panel labels are wrapped.
 #' @param ... For the base-graphics mode, further arguments passed to
 #'   \code{\link[graphics]{plot}} (e.g. \code{cex}, \code{main}).

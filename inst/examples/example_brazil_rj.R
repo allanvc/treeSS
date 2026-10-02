@@ -150,7 +150,7 @@ n_iter <- seq_rj$n_iter
 if (n_iter > 0) {
   # Cross-join the map polygons with the panels of the sequential scan,
   # so that every municipality appears in every panel (those that are
-  # outside the dataset of 89 municipalities show up as NA-coloured).
+  # outside the dataset of 89 municipalities show up as NA-colored).
   panels <- unique(cr_seq$panel)
   cr_seq_keys <- unique(cr_seq[, c("ibge_code", "cluster", "node_id",
                                     "llr", "pvalue", "panel")])

@@ -161,7 +161,7 @@
   rownames(cases_mat) <- as.character(tree_leaves)
   colnames(cases_mat) <- as.character(regions$region_id)
 
-  # Drop rows where cases == 0 to match earlier behaviour
+  # Drop rows where cases == 0 to match earlier behavior
   keep <- cases > 0
   if (any(keep)) {
     key <- paste(row_idx[keep], col_idx[keep], sep = "_")

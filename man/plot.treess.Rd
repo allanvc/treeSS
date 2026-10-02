@@ -40,10 +40,10 @@ larger values add the distinct secondary clusters retained by
 \code{\link{filter_clusters}}, one panel each. Ignored for
 \code{"sequential_scan"} objects, where every iteration is drawn.}
 
-\item{palette}{Character vector of fill colours, recycled over
-clusters. The default is a four-colour qualitative palette.}
+\item{palette}{Character vector of fill colors, recycled over
+clusters. The default is a four-color qualitative palette.}
 
-\item{na_fill}{Fill colour for regions outside the cluster of a panel.}
+\item{na_fill}{Fill color for regions outside the cluster of a panel.}
 
 \item{wrap}{Integer. Width at which panel labels are wrapped.}
 

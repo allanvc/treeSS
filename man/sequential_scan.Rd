@@ -60,7 +60,7 @@ Default 999.}
 \item{max_pop_pct}{Numeric. Maximum zone-size constraint, passed to
 the inner scans. Default 0.5.}
 
-\item{buffer_size}{Integer. Number of nearest-neighbour regions to
+\item{buffer_size}{Integer. Number of nearest-neighbor regions to
 remove together with each detected cluster, computed by Euclidean
 distance from each cluster region to the remaining ones. Default
 0. Zhang et al. (2010) report that the type I error and power are
@@ -102,7 +102,7 @@ An object of class \code{"sequential_scan"} with components:
 Implements the sequential adjustment of Zhang, Assuncao and Kulldorff
 (2010) for detecting secondary clusters. After the most likely cluster
 (MLC) is detected and found significant, the regions composing it
-(optionally together with a buffer of nearest-neighbour regions) are
+(optionally together with a buffer of nearest-neighbor regions) are
 \emph{removed} from the dataset -- treated as a \dQuote{lake} with no
 population and no cases -- and the scan is re-run on the reduced data
 with a fresh Monte Carlo simulation. The procedure is iterated until

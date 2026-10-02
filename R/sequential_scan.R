@@ -3,7 +3,7 @@
 #' Implements the sequential adjustment of Zhang, Assuncao and Kulldorff
 #' (2010) for detecting secondary clusters. After the most likely cluster
 #' (MLC) is detected and found significant, the regions composing it
-#' (optionally together with a buffer of nearest-neighbour regions) are
+#' (optionally together with a buffer of nearest-neighbor regions) are
 #' \emph{removed} from the dataset -- treated as a \dQuote{lake} with no
 #' population and no cases -- and the scan is re-run on the reduced data
 #' with a fresh Monte Carlo simulation. The procedure is iterated until
@@ -54,7 +54,7 @@
 #'   Default 999.
 #' @param max_pop_pct Numeric. Maximum zone-size constraint, passed to
 #'   the inner scans. Default 0.5.
-#' @param buffer_size Integer. Number of nearest-neighbour regions to
+#' @param buffer_size Integer. Number of nearest-neighbor regions to
 #'   remove together with each detected cluster, computed by Euclidean
 #'   distance from each cluster region to the remaining ones. Default
 #'   0. Zhang et al. (2010) report that the type I error and power are
@@ -421,7 +421,7 @@ sequential_scan <- function(data, cases, population,
 
   # Build the regions table that we attach to the result, for plotting
   # downstream. We use the ORIGINAL (uncut) inputs so that
-  # get_cluster_regions() can colour every region.
+  # get_cluster_regions() can color every region.
   if (scan_type == "tree") {
     out_regions <- NULL
   } else if (scan_type == "circular") {
@@ -467,7 +467,7 @@ sequential_scan <- function(data, cases, population,
 # =============================================================================
 
 #' @keywords internal
-#' Compute the union of cluster regions and their nearest-neighbour buffer.
+#' Compute the union of cluster regions and their nearest-neighbor buffer.
 #' Distance is Euclidean on (x, y); regions are picked by smallest minimum
 #' distance to any cluster region.
 .add_buffer_regions <- function(cluster_region_ids, all_region_id,

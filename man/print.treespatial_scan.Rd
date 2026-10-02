@@ -13,7 +13,7 @@
 IDs to display in full before truncating with "... and N more".
 The default of \code{10L} keeps console output compact when the
 most likely cluster spans many leaves (for example, when the
-root node maximises the likelihood ratio for an aggregated
+root node maximizes the likelihood ratio for an aggregated
 denominator) or many regions; set \code{max_show = -1L} to
 print every value. Mirrors the convention used by \pkg{tibble}.}
 

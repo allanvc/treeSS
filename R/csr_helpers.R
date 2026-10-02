@@ -34,7 +34,7 @@
 
   # Row position of each node's parent within all_nodes (NA for the root and
   # for any parent_id not present in node_id, matching the previous
-  # behaviour of dropping such rows).
+  # behavior of dropping such rows).
   parent_pos <- match(tree$parent_id, all_nodes)
   child_rows <- which(!is.na(parent_pos))
 

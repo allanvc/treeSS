@@ -137,7 +137,7 @@ print.tree_scan <- function(x, max_show = 10L, ...) {
   cat(paste(rep("-", 50), collapse = ""), "\n")
   cat("Total cases:", x$total_cases, "\n")
   # `population_supplied` was added in treeSS 0.2.7; when it is absent
-  # (objects created by older versions) we keep the legacy behaviour of
+  # (objects created by older versions) we keep the legacy behavior of
   # always printing the total. When the user did not supply a
   # `population` column, each leaf is weighted 1 and printing the leaf
   # count as a "population" would be misleading.
@@ -211,7 +211,7 @@ summary.tree_scan <- function(object, ...) {
 #'   IDs to display in full before truncating with "... and N more".
 #'   The default of \code{10L} keeps console output compact when the
 #'   most likely cluster spans many leaves (for example, when the
-#'   root node maximises the likelihood ratio for an aggregated
+#'   root node maximizes the likelihood ratio for an aggregated
 #'   denominator) or many regions; set \code{max_show = -1L} to
 #'   print every value. Mirrors the convention used by \pkg{tibble}.
 #' @param ... Further arguments passed to or from other methods.
@@ -309,7 +309,7 @@ print.sequential_scan <- function(x, max_show = 10L, ...) {
   cat(paste(rep("-", 55), collapse = ""), "\n")
   cat("Scan type           :", x$scan_type, "\n")
   cat("Buffer size         :", x$buffer_size,
-      "neighbouring region(s) per iteration\n")
+      "neighboring region(s) per iteration\n")
   cat("Iterations performed:", x$n_iter, "\n")
   cat("Alpha               :", x$alpha, "\n")
   cat("MC replications/iter:", x$nsim, "\n\n")
